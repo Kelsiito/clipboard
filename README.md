@@ -27,7 +27,7 @@ The app is intentionally local-only. History is stored under `~/Library/Applicat
 - `Enter`: paste selected item
 - `Esc`: close picker
 
-Click the `×` button, click outside the picker, or paste an item to close it. When Accessibility is available, the picker opens above the active text field/selection; without it, the picker falls back to the screen centre.
+Click the `×` button, click outside the picker, or paste an item to close it. On `⌘⇧V`, the app captures the target app's focused text field before activation and opens the picker above its caret/selection with a spring pop-up animation. Without Accessibility, it uses the mouse position as fallback.
 
 ## Validation
 

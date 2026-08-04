@@ -92,11 +92,13 @@ final class AppState: ObservableObject {
     }
 
     func showPanel() {
-        targetApplication = NSWorkspace.shared.frontmostApplication?.processIdentifier == NSRunningApplication.current.processIdentifier
-            ? nil
-            : NSWorkspace.shared.frontmostApplication
+        if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+           frontmostApplication.processIdentifier != NSRunningApplication.current.processIdentifier {
+            targetApplication = frontmostApplication
+        }
         panelController.show(
             store: store,
+            targetApplication: targetApplication,
             onSelect: { [weak self] item in self?.paste(item) },
             onTogglePin: { [weak self] item in self?.togglePin(item) }
         )

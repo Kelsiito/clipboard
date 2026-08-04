@@ -2,9 +2,16 @@
 
 ## Current Status
 
-v1 implementation complete; settings rendering fix ready for public repo.
+v1 implementation complete; caret-anchored Windows+V picker fix ready for public repo.
 
 ## Latest Completed Task
+
+- Date: 2026-08-04
+- Task: Anchor picker to active text field
+- Summary: Captured target app before activation, resolved focused AX text element and caret/selection, converted coordinates per screen, added mouse fallback, and strengthened Windows+V-style spring/slide/fade animation.
+- Validation: 10/10 unit tests passed; Debug build passed; picker screenshot showed it above active composer with safe gap; launch/hotkey smoke passed.
+- Git commit: pending.
+- Git push status: pending.
 
 - Date: 2026-08-04
 - Task: Fix blank settings window
@@ -30,6 +37,19 @@ v1 implementation complete; settings rendering fix ready for public repo.
 - Git push status: Public `origin/main` created; publication and housekeeping pushes verified.
 
 ## Task History
+
+### 2026-08-04 — Anchor picker to active text field
+
+**What was done**
+
+- Passed captured target app into the picker instead of re-reading a possibly changed frontmost app.
+- Used focused AX caret/selection bounds and per-screen coordinate conversion; mouse location is fallback when Accessibility cannot identify text input.
+- Replaced subtle open transition with a spring pop-up that rises from the field area.
+
+**Validation**
+
+- Picker smoke screenshot showed panel above the active composer, with a non-overlapping gap.
+- 10/10 tests, Debug build, and launch/hotkey smoke passed.
 
 ### 2026-08-04 — Fix blank settings window
 

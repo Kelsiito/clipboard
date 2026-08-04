@@ -18,6 +18,7 @@ final class ClipboardPanelController {
 
     func show(
         store: ClipboardStore,
+        targetApplication: NSRunningApplication?,
         onSelect: @escaping (ClipboardItem) -> Void,
         onTogglePin: @escaping (ClipboardItem) -> Void
     ) {
@@ -31,7 +32,7 @@ final class ClipboardPanelController {
                 onClose: { [weak self] in self?.close() }
             )
         )
-        positionPanel(panel)
+        positionPanel(panel, targetApplication: targetApplication)
         panel.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKey()
@@ -58,25 +59,19 @@ final class ClipboardPanelController {
         return panel
     }
 
-    private func positionPanel(_ panel: NSPanel) {
-        guard
-            let screen = NSScreen.main ?? NSScreen.screens.first,
-            let selectedTextRect = selectedTextRect()
-        else {
+    private func positionPanel(_ panel: NSPanel, targetApplication: NSRunningApplication?) {
+        let anchor = textAnchor(for: targetApplication) ?? mouseAnchor()
+        guard let anchor else {
             panel.center()
             return
         }
 
-        let selection = NSRect(
-            x: selectedTextRect.minX,
-            y: screen.frame.maxY - selectedTextRect.maxY,
-            width: max(selectedTextRect.width, 1),
-            height: max(selectedTextRect.height, 1)
-        )
+        let screen = anchor.screen
+        let selection = anchor.rect
         let visibleFrame = screen.visibleFrame
         let panelSize = panel.frame.size
         let horizontalMargin: CGFloat = 12
-        let verticalMargin: CGFloat = 12
+        let verticalMargin: CGFloat = 24
 
         let minimumX = visibleFrame.minX + horizontalMargin
         let maximumX = max(minimumX, visibleFrame.maxX - panelSize.width - horizontalMargin)
@@ -93,14 +88,13 @@ final class ClipboardPanelController {
         panel.setFrameOrigin(NSPoint(x: originX, y: originY))
     }
 
-    private func selectedTextRect() -> CGRect? {
-        guard
-            AXIsProcessTrusted(),
-            let application = NSWorkspace.shared.frontmostApplication,
-            application.processIdentifier != NSRunningApplication.current.processIdentifier
-        else {
-            return nil
-        }
+    private struct TextAnchor {
+        let screen: NSScreen
+        let rect: NSRect
+    }
+
+    private func textAnchor(for application: NSRunningApplication?) -> TextAnchor? {
+        guard AXIsProcessTrusted(), let application else { return nil }
 
         let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
         var focusedValue: CFTypeRef?
@@ -124,10 +118,49 @@ final class ClipboardPanelController {
         ) == .success,
            let selectedRangeValue,
            let bounds = bounds(of: focusedElement, for: selectedRangeValue) {
-            return bounds
+            return anchor(for: bounds)
         }
 
-        return frame(of: focusedElement)
+        guard let focusedFrame = frame(of: focusedElement) else { return nil }
+        return anchor(for: focusedFrame)
+    }
+
+    private func anchor(for accessibilityRect: CGRect) -> TextAnchor? {
+        let rect = CGRect(
+            x: accessibilityRect.minX,
+            y: accessibilityRect.minY,
+            width: max(accessibilityRect.width, 1),
+            height: max(accessibilityRect.height, 1)
+        )
+
+        for screen in NSScreen.screens {
+            let cocoaRect = NSRect(
+                x: rect.minX,
+                y: screen.frame.maxY - rect.maxY,
+                width: rect.width,
+                height: rect.height
+            )
+            if screen.frame.contains(NSPoint(x: cocoaRect.midX, y: cocoaRect.midY)) {
+                return TextAnchor(screen: screen, rect: cocoaRect)
+            }
+        }
+
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return nil }
+        let cocoaRect = NSRect(
+            x: rect.minX,
+            y: screen.frame.maxY - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
+        return TextAnchor(screen: screen, rect: cocoaRect)
+    }
+
+    private func mouseAnchor() -> TextAnchor? {
+        let mouseLocation = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main else {
+            return nil
+        }
+        return TextAnchor(screen: screen, rect: NSRect(origin: mouseLocation, size: .zero))
     }
 
     private func bounds(of element: AXUIElement, for range: CFTypeRef) -> CGRect? {
@@ -239,12 +272,13 @@ struct ClipboardPanelView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.12)))
         .opacity(isPresented ? 1 : 0)
-        .scaleEffect(isPresented ? 1 : 0.96, anchor: .top)
+        .scaleEffect(isPresented ? 1 : 0.94, anchor: .bottom)
+        .offset(y: isPresented ? 0 : 26)
         .onAppear {
             selectedID = items.first?.id
             isPresented = false
             DispatchQueue.main.async {
-                withAnimation(.easeOut(duration: 0.24)) {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                     isPresented = true
                 }
             }
