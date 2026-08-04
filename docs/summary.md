@@ -12,8 +12,8 @@ v1 implementation complete locally. Xcode build and unit tests pass; GitHub publ
 - Files changed: Project sources, tests, docs, icon assets.
 - Commands run: Xcode/toolchain checks; icon generation and asset conversion; `xcodebuild test`; `xcodebuild build`; app launch smoke.
 - Validation: 8/8 unit tests passed; Debug build passed; bundle launched and exited cleanly; icon catalog and `Info.plist` validated.
-- Git commit: `2990e75` implementation; `b2d5111` publication record.
-- Git push status: Public `origin/main` at `b2d5111`; remote SHA verified.
+- Git commit: `2990e75` implementation; `b2d5111` publication record; `567ca9b` artifact ignore.
+- Git push status: Public `origin/main` created; publication and housekeeping pushes verified.
 
 ## Task History
 
@@ -50,8 +50,8 @@ v1 implementation complete locally. Xcode build and unit tests pass; GitHub publ
 
 **Git**
 
-- Commit: `2990e75` implementation; `b2d5111` publication record.
-- Push status: public `Kelsiito/clipboard`; final remote SHA verified.
+- Commit: `2990e75` implementation; `b2d5111` publication record; `567ca9b` artifact ignore.
+- Push status: public `Kelsiito/clipboard`; remote SHA verified after each push.
 
 **Notes / risks**
 
