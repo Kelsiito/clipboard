@@ -116,16 +116,19 @@ final class AppState: ObservableObject {
         panelController.close()
 
         if settingsWindow == nil {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 520, height: 430),
-                styleMask: [.titled, .closable, .miniaturizable],
-                backing: .buffered,
-                defer: false
-            )
+            let settingsSize = NSSize(width: 520, height: 500)
+            let rootView = SettingsView()
+                .environmentObject(self)
+                .frame(width: settingsSize.width, height: settingsSize.height, alignment: .top)
+            let hostingController = NSHostingController(rootView: rootView)
+            hostingController.view.frame = NSRect(origin: .zero, size: settingsSize)
+            hostingController.view.autoresizingMask = [.width, .height]
+
+            let window = NSWindow(contentViewController: hostingController)
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.setContentSize(settingsSize)
+            window.minSize = settingsSize
             window.title = "Definições — clipboard"
-            window.contentViewController = NSHostingController(
-                rootView: SettingsView().environmentObject(self)
-            )
             window.isReleasedWhenClosed = false
             window.level = .floating
             window.hidesOnDeactivate = false

@@ -2,9 +2,16 @@
 
 ## Current Status
 
-v1 implementation complete; compact picker UX update ready for public repo.
+v1 implementation complete; settings rendering fix ready for public repo.
 
 ## Latest Completed Task
+
+- Date: 2026-08-04
+- Task: Fix blank settings window
+- Summary: Rebuilt the custom settings window with an explicit `NSHostingController` frame, autoresizing, fixed content size, and minimum size so all settings sections render.
+- Validation: 10/10 unit tests passed; Debug build passed; settings window screenshot showed Hotkey, Histórico, and Colagem automática; launch smoke passed.
+- Git commit: pending.
+- Git push status: pending.
 
 - Date: 2026-08-04
 - Task: Compact picker UX and pinned history
@@ -23,6 +30,20 @@ v1 implementation complete; compact picker UX update ready for public repo.
 - Git push status: Public `origin/main` created; publication and housekeeping pushes verified.
 
 ## Task History
+
+### 2026-08-04 — Fix blank settings window
+
+**What was done**
+
+- Fixed custom SwiftUI settings window content collapsing below the title bar.
+- Added explicit hosting view frame/autoresizing and fixed/minimum window content size.
+- Kept floating level, all-spaces behavior, and activation above other apps.
+
+**Validation**
+
+- Settings smoke screenshot showed all settings sections and controls.
+- 10/10 unit tests passed.
+- Debug build and launch smoke passed.
 
 ### 2026-08-04 — Compact picker UX and pinned history
 
