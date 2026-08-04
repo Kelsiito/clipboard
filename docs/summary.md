@@ -11,7 +11,7 @@ v1 implementation complete; Liquid Glass picker and caret-anchored Windows+V beh
 - Summary: Added native macOS 26 Liquid Glass surfaces, glass controls, and materialized picker entrance with a macOS 14–25 fallback. The picker now reads the system-wide focused Accessibility element and selected range before falling back to the focused app window; it no longer follows the mouse when a target app exists. Accessibility is prompted when the hotkey needs accurate anchoring or automatic paste.
 - Validation: 10/10 unit tests passed; Debug test build passed; picker smoke showed Liquid Glass and placement above a TextEdit text area; settings smoke showed rendered Liquid Glass settings above another app.
 - Git commit: `8bd7d6d`.
-- Git push status: pending; remote SHA to verify after push.
+- Git push status: public `Kelsiito/clipboard`; remote `main` SHA `b9f22f272a54d46466a0bae2f0cc1df7bed0e94b` verified.
 
 - Date: 2026-08-04
 - Task: Anchor picker to active text field
