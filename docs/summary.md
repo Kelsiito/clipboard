@@ -12,8 +12,8 @@ v1 implementation complete locally. Xcode build and unit tests pass; GitHub publ
 - Files changed: Project sources, tests, docs, icon assets.
 - Commands run: Xcode/toolchain checks; icon generation and asset conversion; `xcodebuild test`; `xcodebuild build`; app launch smoke.
 - Validation: 8/8 unit tests passed; Debug build passed; bundle launched and exited cleanly; icon catalog and `Info.plist` validated.
-- Git commit: Pending.
-- Git push status: Pending.
+- Git commit: `2990e75` implementation; publication record commit follows.
+- Git push status: Public `origin/main` created and initial SHA verified.
 
 ## Task History
 
@@ -50,8 +50,8 @@ v1 implementation complete locally. Xcode build and unit tests pass; GitHub publ
 
 **Git**
 
-- Commit: pending
-- Push status: pending
+- Commit: `2990e75` implementation; publication record commit follows.
+- Push status: public `Kelsiito/clipboard` created; initial SHA verified.
 
 **Notes / risks**
 
