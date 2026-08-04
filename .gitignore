@@ -2,6 +2,7 @@
 build/
 DerivedData/
 work/
+outputs/
 *.xcuserstate
 xcuserdata/
 *.xcscmblueprint
