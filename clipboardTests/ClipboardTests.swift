@@ -96,6 +96,68 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(imageItem.preview, "Copied image")
     }
 
+    func testAppearanceModesMapToExpectedColorSchemes() {
+        XCTAssertNil(ClipboardAppearance.system.colorScheme)
+        XCTAssertEqual(ClipboardAppearance.light.colorScheme, .light)
+        XCTAssertEqual(ClipboardAppearance.dark.colorScheme, .dark)
+        XCTAssertEqual(ClipboardAppearance.allCases, [.system, .light, .dark])
+    }
+
+    func testMaterialOptionsIncludeLiquidGlassAndStandard() {
+        XCTAssertEqual(ClipboardMaterial.allCases, [.liquidGlass, .standard])
+        XCTAssertEqual(ClipboardMaterial.liquidGlass.title, "Liquid Glass")
+        XCTAssertEqual(ClipboardMaterial.standard.title, "Standard")
+    }
+
+    func testSmartPastePlainTextDropsRichContent() throws {
+        let item = ClipboardItem(
+            fingerprint: "rich-text",
+            text: "hello",
+            richTextData: Data([1, 2, 3]),
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+
+        let payload = try XCTUnwrap(ClipboardPasteFormatter.payload(for: item, format: .plainText))
+        XCTAssertEqual(payload.text, "hello")
+        XCTAssertNil(payload.richTextData)
+        XCTAssertNil(payload.imageData)
+        XCTAssertTrue(payload.fileURLs.isEmpty)
+    }
+
+    func testSmartPasteFormatsJSONAndSortsKeys() throws {
+        let input = #"{"z":1,"a":[true,false]}"#
+        let formatted = try XCTUnwrap(ClipboardPasteFormatter.prettyPrintedJSON(input))
+
+        XCTAssertEqual(formatted, "{\n  \"a\" : [\n    true,\n    false\n  ],\n  \"z\" : 1\n}")
+    }
+
+    func testSmartPasteRejectsInvalidJSON() {
+        XCTAssertNil(ClipboardPasteFormatter.prettyPrintedJSON("not json"))
+    }
+
+    func testSmartPasteCreatesMarkdownLinkWithoutNetworkAccess() throws {
+        let markdown = try XCTUnwrap(ClipboardPasteFormatter.markdownLink("https://example.com/docs/start"))
+        XCTAssertEqual(markdown, "[example.com/docs/start](https://example.com/docs/start)")
+    }
+
+    func testSmartPasteAvailabilityOnlyShowsApplicableFormats() {
+        let item = ClipboardItem(
+            fingerprint: "json",
+            text: "{\"name\":\"clipboard\"}",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+
+        XCTAssertEqual(
+            ClipboardPasteFormat.available(for: item),
+            [.original, .plainText, .markdown, .prettyJSON]
+        )
+    }
+
     @MainActor
     func testStoreClearRemovesHistoryOnly() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

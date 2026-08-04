@@ -4,6 +4,52 @@ import Carbon.HIToolbox
 import Foundation
 import SwiftUI
 
+enum ClipboardAppearance: String, CaseIterable, Hashable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+enum ClipboardMaterial: String, CaseIterable, Hashable, Identifiable {
+    case liquidGlass
+    case standard
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .liquidGlass: return "Liquid Glass"
+        case .standard: return "Standard"
+        }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
@@ -32,6 +78,20 @@ final class AppState: ObservableObject {
         }
     }
 
+    @Published var appearance: ClipboardAppearance {
+        didSet {
+            UserDefaults.standard.set(appearance.rawValue, forKey: Keys.appearance)
+            applyAppearance(appearance, to: settingsWindow)
+            panelController.setAppearance(appearance)
+        }
+    }
+
+    @Published var material: ClipboardMaterial {
+        didSet {
+            UserDefaults.standard.set(material.rawValue, forKey: Keys.material)
+        }
+    }
+
     @Published private(set) var isAccessibilityTrusted = AXIsProcessTrusted()
     @Published private(set) var isRecordingHotKey = false
     @Published var statusMessage: String?
@@ -51,14 +111,22 @@ final class AppState: ObservableObject {
     private enum Keys {
         static let hotKey = "clipboard.hotKey"
         static let historyLimit = "clipboard.historyLimit"
+        static let appearance = "clipboard.appearance"
+        static let material = "clipboard.material"
     }
 
     private init() {
         store = ClipboardStore(limit: UserDefaults.standard.integer(forKey: Keys.historyLimit) == 0 ? 50 : UserDefaults.standard.integer(forKey: Keys.historyLimit))
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
+        let savedAppearance = UserDefaults.standard.string(forKey: Keys.appearance)
+            .flatMap(ClipboardAppearance.init(rawValue:)) ?? .system
+        let savedMaterial = UserDefaults.standard.string(forKey: Keys.material)
+            .flatMap(ClipboardMaterial.init(rawValue:)) ?? .liquidGlass
         hotKey = savedHotKey
         oldHotKey = savedHotKey
         historyLimit = store.limit
+        appearance = savedAppearance
+        material = savedMaterial
 
         hotKeyManager.onHotKey = { [weak self] in
             self?.showPanel()
@@ -106,7 +174,9 @@ final class AppState: ObservableObject {
         panelController.show(
             store: store,
             targetApplication: targetApplication,
-            onSelect: { [weak self] item in self?.paste(item) },
+            appearance: appearance,
+            material: material,
+            onPaste: { [weak self] item, format in self?.paste(item, format: format) },
             onTogglePin: { [weak self] item in self?.togglePin(item) }
         )
     }
@@ -126,33 +196,51 @@ final class AppState: ObservableObject {
 
         if settingsWindow == nil {
             let settingsSize = NSSize(width: 520, height: 500)
+            let window = NSWindow(
+                contentRect: NSRect(origin: .zero, size: settingsSize),
+                styleMask: [.titled, .closable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.appearance = appearance.nsAppearance
+            window.setContentSize(settingsSize)
+            window.minSize = settingsSize
+            window.title = "Settings — clipboard"
+            window.titlebarAppearsTransparent = false
+            window.titleVisibility = .visible
+            window.isOpaque = true
+            window.backgroundColor = .windowBackgroundColor
+            window.isReleasedWhenClosed = false
+            window.level = .floating
+            window.hidesOnDeactivate = false
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            window.standardWindowButton(.closeButton)?.isEnabled = true
+            window.standardWindowButton(.miniaturizeButton)?.isEnabled = true
+
             let rootView = SettingsView()
                 .environmentObject(self)
                 .frame(width: settingsSize.width, height: settingsSize.height, alignment: .top)
             let hostingController = NSHostingController(rootView: rootView)
             hostingController.view.frame = NSRect(origin: .zero, size: settingsSize)
             hostingController.view.autoresizingMask = [.width, .height]
+            window.contentViewController = hostingController
 
-            let window = NSWindow(contentViewController: hostingController)
-            window.styleMask = [.titled, .closable, .miniaturizable]
-            window.setContentSize(settingsSize)
-            window.minSize = settingsSize
-            window.title = "Settings — clipboard"
-            window.titlebarAppearsTransparent = true
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.isReleasedWhenClosed = false
-            window.level = .floating
-            window.hidesOnDeactivate = false
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             window.center()
             settingsWindow = window
         }
 
+        applyAppearance(appearance, to: settingsWindow)
         settingsWindow?.level = .floating
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.orderFrontRegardless()
         settingsWindow?.makeKey()
+    }
+
+    private func applyAppearance(_ appearance: ClipboardAppearance, to window: NSWindow?) {
+        window?.appearance = appearance.nsAppearance
+        window?.contentView?.appearance = appearance.nsAppearance
+        window?.backgroundColor = .windowBackgroundColor
+        window?.contentView?.needsDisplay = true
     }
 
     func clearHistory() {
@@ -200,18 +288,23 @@ final class AppState: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    private func paste(_ item: ClipboardItem) {
+    private func paste(_ item: ClipboardItem, format: ClipboardPasteFormat = .original) {
+        guard let payload = ClipboardPasteFormatter.payload(for: item, format: format) else {
+            statusMessage = "\(format.title) is unavailable for this item."
+            return
+        }
+
         panelController.close()
         let pasteboard = NSPasteboard.general
         monitor.suppressCapture()
         pasteboard.clearContents()
 
-        if let text = item.text { pasteboard.setString(text, forType: .string) }
-        if let richTextData = item.richTextData { pasteboard.setData(richTextData, forType: .rtf) }
-        if let imageData = item.imageData, let imageType = item.imageType {
+        if let text = payload.text { pasteboard.setString(text, forType: .string) }
+        if let richTextData = payload.richTextData { pasteboard.setData(richTextData, forType: .rtf) }
+        if let imageData = payload.imageData, let imageType = payload.imageType {
             pasteboard.setData(imageData, forType: NSPasteboard.PasteboardType(imageType))
         }
-        let urls = item.files.compactMap(\.resolvedURL)
+        let urls = payload.fileURLs
         if !urls.isEmpty { pasteboard.writeObjects(urls as [NSURL]) }
 
         guard let targetApplication else { return }
