@@ -2,6 +2,7 @@ import ApplicationServices
 import AppKit
 import Carbon.HIToolbox
 import Foundation
+import SwiftUI
 
 @MainActor
 final class AppState: ObservableObject {
@@ -40,6 +41,7 @@ final class AppState: ObservableObject {
     private let monitor = PasteboardMonitor()
     private let hotKeyManager = GlobalHotKeyManager()
     private let panelController = ClipboardPanelController()
+    private var settingsWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
     private var recordingMonitor: Any?
     private var accessibilityTimer: Timer?
@@ -93,9 +95,49 @@ final class AppState: ObservableObject {
         targetApplication = NSWorkspace.shared.frontmostApplication?.processIdentifier == NSRunningApplication.current.processIdentifier
             ? nil
             : NSWorkspace.shared.frontmostApplication
-        panelController.show(items: store.items) { [weak self] item in
-            self?.paste(item)
+        panelController.show(
+            store: store,
+            onSelect: { [weak self] item in self?.paste(item) },
+            onTogglePin: { [weak self] item in self?.togglePin(item) }
+        )
+    }
+
+    func togglePin(_ item: ClipboardItem) {
+        let shouldPin = !item.isPinned
+        guard store.setPinned(item.id, pinned: shouldPin) else {
+            if shouldPin {
+                statusMessage = "Máximo de 3 itens afixados."
+            }
+            return
         }
+    }
+
+    func showSettings() {
+        panelController.close()
+
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 520, height: 430),
+                styleMask: [.titled, .closable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Definições — clipboard"
+            window.contentViewController = NSHostingController(
+                rootView: SettingsView().environmentObject(self)
+            )
+            window.isReleasedWhenClosed = false
+            window.level = .floating
+            window.hidesOnDeactivate = false
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            window.center()
+            settingsWindow = window
+        }
+
+        settingsWindow?.level = .floating
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.orderFrontRegardless()
+        settingsWindow?.makeKey()
     }
 
     func clearHistory() {

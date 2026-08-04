@@ -46,6 +46,11 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var imageData: Data?
     var imageType: String?
     var files: [StoredFileReference]
+    var isPinned: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id, createdAt, fingerprint, text, richTextData, imageData, imageType, files, isPinned
+    }
 
     var hasText: Bool { text?.isEmpty == false }
     var hasImage: Bool { imageData != nil }
@@ -86,7 +91,8 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         richTextData: Data?,
         imageData: Data?,
         imageType: String?,
-        files: [StoredFileReference]
+        files: [StoredFileReference],
+        isPinned: Bool = false
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -96,6 +102,33 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         self.imageData = imageData
         self.imageType = imageType
         self.files = files
+        self.isPinned = isPinned
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        fingerprint = try container.decode(String.self, forKey: .fingerprint)
+        text = try container.decodeIfPresent(String.self, forKey: .text)
+        richTextData = try container.decodeIfPresent(Data.self, forKey: .richTextData)
+        imageData = try container.decodeIfPresent(Data.self, forKey: .imageData)
+        imageType = try container.decodeIfPresent(String.self, forKey: .imageType)
+        files = try container.decode([StoredFileReference].self, forKey: .files)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(fingerprint, forKey: .fingerprint)
+        try container.encodeIfPresent(text, forKey: .text)
+        try container.encodeIfPresent(richTextData, forKey: .richTextData)
+        try container.encodeIfPresent(imageData, forKey: .imageData)
+        try container.encodeIfPresent(imageType, forKey: .imageType)
+        try container.encode(files, forKey: .files)
+        try container.encode(isPinned, forKey: .isPinned)
     }
 }
 

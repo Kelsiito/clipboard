@@ -7,7 +7,9 @@ struct ClipboardApp: App {
 
     var body: some Scene {
         MenuBarExtra("clipboard", systemImage: "doc.on.clipboard") {
-            SettingsLink {
+            Button {
+                appState.showSettings()
+            } label: {
                 Label("Definições…", systemImage: "gearshape")
             }
 
@@ -18,25 +20,6 @@ struct ClipboardApp: App {
             }
         }
         .menuBarExtraStyle(.menu)
-
-        Settings {
-            SettingsView()
-                .environmentObject(appState)
-        }
-        .commands {
-            CommandGroup(replacing: .appInfo) {}
-            CommandGroup(replacing: .appSettings) {
-                SettingsLink {
-                    Text("Definições…")
-                }
-            }
-            CommandGroup(replacing: .appTermination) {
-                Button("Sair") {
-                    NSApp.terminate(nil)
-                }
-                .keyboardShortcut("q")
-            }
-        }
     }
 }
 

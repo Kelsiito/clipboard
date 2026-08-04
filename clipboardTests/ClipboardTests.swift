@@ -34,6 +34,46 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testStorePinsMaximumThreeItemsAndPersistsOrder() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory)
+
+        for index in 0..<5 {
+            store.ingest(ClipboardSnapshot(text: "item-\(index)", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
+        }
+
+        let candidates = Array(store.items.prefix(4)).map(\.id)
+        XCTAssertTrue(store.setPinned(candidates[0], pinned: true))
+        XCTAssertTrue(store.setPinned(candidates[1], pinned: true))
+        XCTAssertTrue(store.setPinned(candidates[2], pinned: true))
+        XCTAssertFalse(store.setPinned(candidates[3], pinned: true))
+        XCTAssertEqual(store.items.filter(\.isPinned).count, 3)
+        XCTAssertTrue(store.items.prefix(3).allSatisfy(\.isPinned))
+
+        let reloaded = ClipboardStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.items.filter(\.isPinned).count, 3)
+        XCTAssertTrue(reloaded.items.prefix(3).allSatisfy(\.isPinned))
+    }
+
+    func testLegacyItemDecodesWithoutPinnedFlag() throws {
+        let item = ClipboardItem(
+            fingerprint: "legacy",
+            text: "old item",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let encoded = try JSONEncoder().encode(item)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "isPinned")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(ClipboardItem.self, from: legacyData)
+        XCTAssertFalse(decoded.isPinned)
+    }
+
+    @MainActor
     func testStoreClearRemovesHistoryOnly() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = ClipboardStore(directoryURL: directory)

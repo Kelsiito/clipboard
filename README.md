@@ -4,6 +4,7 @@ Clipboard history app for macOS.
 
 `clipboard` watches the general pasteboard, keeps local text/images/file references, and opens a simple Windows+V-style picker with `⌘⇧V`.
 It runs as a menu-bar-only app, like Amphetamine, with no Dock presence.
+The picker shows three rows at once; scroll for older entries, or use the pin button/context menu to keep up to three favourites at the top.
 
 ## Requirements
 
@@ -25,6 +26,8 @@ The app is intentionally local-only. History is stored under `~/Library/Applicat
 - Arrow keys: navigate
 - `Enter`: paste selected item
 - `Esc`: close picker
+
+Click the `×` button, click outside the picker, or paste an item to close it. When Accessibility is available, the picker opens above the active text field/selection; without it, the picker falls back to the screen centre.
 
 ## Validation
 

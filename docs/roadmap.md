@@ -10,6 +10,7 @@
 - Open history with a configurable global hotkey.
 - Paste the selected item back into the previously active app.
 - Keep UI small, keyboard-friendly, and visible only in the menu bar.
+- Show three history rows at once, with scrolling and up to three pinned items first.
 
 ## Non-goals
 
@@ -63,6 +64,7 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 ## Phase 3 — UI/UX Polish
 
 - Add settings, keyboard navigation, Accessibility status, menu-bar behavior, and icon polish.
+- Add compact picker animation, outside-click dismissal, pin controls, and selection-aware positioning.
 
 ## Phase 4 — Testing & QA
 
@@ -90,5 +92,5 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 
 - App builds/tests successfully.
 - Text, images, and file references persist and paste correctly.
-- Hotkey/settings/menu-bar/menu behavior validated.
+- Hotkey/settings/menu-bar/menu, picker dismissal, pinning, and compact scrolling behavior validated.
 - Docs updated, commit created, public repo pushed, remote verified.
