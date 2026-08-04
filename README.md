@@ -11,6 +11,8 @@ The picker shows three rows at once; scroll for older entries, or use the pin bu
 - macOS 14+
 - Xcode with macOS SDK
 
+On macOS 26+, the picker and settings use native Liquid Glass. macOS 14–25 keep a matching material fallback.
+
 ## Run
 
 1. Open `clipboard.xcodeproj` in Xcode.
@@ -27,7 +29,7 @@ The app is intentionally local-only. History is stored under `~/Library/Applicat
 - `Enter`: paste selected item
 - `Esc`: close picker
 
-Click the `×` button, click outside the picker, or paste an item to close it. On `⌘⇧V`, the app captures the target app's focused text field before activation and opens the picker above its caret/selection with a spring pop-up animation. Without Accessibility, it uses the mouse position as fallback.
+Click the `×` button, click outside the picker, or paste an item to close it. On `⌘⇧V`, the app captures the target app's focused text field before activation and opens the picker above its caret/selection with a spring pop-up animation. Accessibility is requested when needed for this positioning and automatic paste; without it, the picker falls back to the target app window instead of tracking the mouse.
 
 ## Validation
 

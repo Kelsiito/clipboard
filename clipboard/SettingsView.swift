@@ -1,6 +1,35 @@
 import ApplicationServices
 import SwiftUI
 
+extension View {
+    @ViewBuilder
+    func clipboardGlassSurface<S: Shape>(in shape: S) -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(.regular, in: shape)
+        } else {
+            background(.regularMaterial, in: shape)
+        }
+    }
+
+    @ViewBuilder
+    func clipboardGlassButtonStyle() -> some View {
+        if #available(macOS 26.0, *) {
+            buttonStyle(.glass)
+        } else {
+            buttonStyle(.borderless)
+        }
+    }
+
+    @ViewBuilder
+    func clipboardGlassEntranceTransition() -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffectTransition(.materialize)
+        } else {
+            self
+        }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var showingClearConfirmation = false
@@ -56,8 +85,17 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
+        .scrollContentBackground(.hidden)
+        .background(.clear)
+        .frame(width: 460, height: 468)
         .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .clipboardGlassSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
+        .padding(16)
         .confirmationDialog("Limpar histórico?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
             Button("Limpar", role: .destructive) { appState.clearHistory() }
             Button("Cancelar", role: .cancel) {}

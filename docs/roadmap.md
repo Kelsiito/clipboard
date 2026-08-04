@@ -38,7 +38,7 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 - Default hotkey is `⌘⇧V`.
 - Default history limit is 50, configurable from 10 to 200.
 - Text, images, and file references are one history item when copied together.
-- Accessibility is requested only for automatic paste.
+- Accessibility is requested for exact active-field positioning and automatic paste.
 
 ## Rules
 
@@ -64,7 +64,7 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 ## Phase 3 — UI/UX Polish
 
 - Add settings, keyboard navigation, Accessibility status, menu-bar behavior, and icon polish.
-- Add compact picker animation, outside-click dismissal, pin controls, and selection-aware positioning.
+- Add compact picker animation, outside-click dismissal, pin controls, selection-aware positioning, and native Liquid Glass styling with a material fallback.
 
 ## Phase 4 — Testing & QA
 

@@ -92,10 +92,18 @@ final class AppState: ObservableObject {
     }
 
     func showPanel() {
+        let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
         if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
-           frontmostApplication.processIdentifier != NSRunningApplication.current.processIdentifier {
+           frontmostApplication.processIdentifier != currentProcessIdentifier {
             targetApplication = frontmostApplication
         }
+
+        if !AXIsProcessTrusted() {
+            statusMessage = "Ative Accessibility para posicionar junto ao campo e colar automaticamente."
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        }
+
         panelController.show(
             store: store,
             targetApplication: targetApplication,
@@ -131,6 +139,9 @@ final class AppState: ObservableObject {
             window.setContentSize(settingsSize)
             window.minSize = settingsSize
             window.title = "Definições — clipboard"
+            window.titlebarAppearsTransparent = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
             window.isReleasedWhenClosed = false
             window.level = .floating
             window.hidesOnDeactivate = false
