@@ -134,6 +134,17 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(origin.y, 214, accuracy: 0.001)
     }
 
+    func testComposerAnchorUsesBottomOfWindowInsteadOfMousePosition() {
+        let anchor = ClipboardPanelPlacement.composerAnchor(
+            in: CGRect(x: 0, y: 33, width: 1470, height: 923)
+        )
+
+        XCTAssertEqual(anchor.midX, 735, accuracy: 0.001)
+        XCTAssertEqual(anchor.minY, 860, accuracy: 0.001)
+        XCTAssertEqual(anchor.width, 1, accuracy: 0.001)
+        XCTAssertEqual(anchor.height, 1, accuracy: 0.001)
+    }
+
     func testPanelPlacementFlipsBelowCaretNearTopEdge() {
         let origin = ClipboardPanelPlacement.origin(
             anchor: NSRect(x: 700, y: 920, width: 1, height: 22),

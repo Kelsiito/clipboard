@@ -13,6 +13,11 @@ private final class ClipboardPanel: NSPanel {
 }
 
 enum ClipboardPanelPlacement {
+    static func composerAnchor(in window: CGRect, bottomInset: CGFloat = 96) -> CGRect {
+        let y = max(window.minY, window.maxY - max(bottomInset, 0))
+        return CGRect(x: window.midX - 0.5, y: y, width: 1, height: 1)
+    }
+
     static func origin(
         anchor: NSRect,
         panelSize: NSSize,
@@ -66,8 +71,9 @@ final class ClipboardPanelController {
     ) {
         // Resolve the caret before creating or activating any clipboard UI so focus
         // still belongs to the app where the user intends to paste.
-        let anchor = textAnchor(for: targetApplication)
-            ?? windowAnchor(for: targetApplication)
+        let textPosition = textAnchor(for: targetApplication)
+        let fallbackPosition = textPosition == nil ? fallbackAnchor(for: targetApplication) : nil
+        let anchor = textPosition ?? fallbackPosition
         let panel = panel ?? makePanel()
         self.panel = panel
         panel.contentViewController = NSHostingController(
@@ -134,7 +140,10 @@ final class ClipboardPanelController {
         guard AXIsProcessTrusted(), let application else { return nil }
 
         let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
-        guard let focusedElement = focusedElement(for: applicationElement),
+        guard let focusedElement = focusedTextElement(
+            for: applicationElement,
+            processIdentifier: application.processIdentifier
+        ),
               isEditableTextElement(focusedElement)
         else { return nil }
 
@@ -204,6 +213,122 @@ final class ClipboardPanelController {
         return (focusedValue as! AXUIElement)
     }
 
+    private func focusedElement(
+        for applicationElement: AXUIElement,
+        processIdentifier: pid_t
+    ) -> AXUIElement? {
+        if let applicationFocusedElement = focusedElement(for: applicationElement) {
+            return applicationFocusedElement
+        }
+
+        guard let systemFocusedElement = systemWideFocusedElement()
+        else { return nil }
+
+        var focusedProcessIdentifier: pid_t = 0
+        guard AXUIElementGetPid(systemFocusedElement, &focusedProcessIdentifier) == .success,
+              focusedProcessIdentifier == processIdentifier
+        else { return nil }
+        return systemFocusedElement
+    }
+
+    private func focusedTextElement(
+        for applicationElement: AXUIElement,
+        processIdentifier: pid_t
+    ) -> AXUIElement? {
+        if let focusedElement = focusedElement(
+            for: applicationElement,
+            processIdentifier: processIdentifier
+        ), isEditableTextElement(focusedElement) {
+            return focusedElement
+        }
+
+        var focusedWindowValue: CFTypeRef?
+        let focusedWindowResult = AXUIElementCopyAttributeValue(
+            applicationElement,
+            kAXFocusedWindowAttribute as CFString,
+            &focusedWindowValue
+        )
+
+        if focusedWindowResult == .success, let focusedWindowValue {
+            var visited = Set<CFHashCode>()
+            if let match = findEditableTextElement(
+                in: focusedWindowValue as! AXUIElement,
+                depth: 0,
+                visited: &visited
+            ) {
+                return match
+            }
+        }
+
+        if let systemFocusedElement = systemWideFocusedElement() {
+            var focusedProcessIdentifier: pid_t = 0
+            guard AXUIElementGetPid(systemFocusedElement, &focusedProcessIdentifier) == .success,
+                  focusedProcessIdentifier == processIdentifier
+            else { return nil }
+
+            var visited = Set<CFHashCode>()
+            return findEditableTextElement(
+                in: systemFocusedElement,
+                depth: 0,
+                visited: &visited
+            )
+        }
+        return nil
+    }
+
+    private func findEditableTextElement(
+        in element: AXUIElement,
+        depth: Int,
+        visited: inout Set<CFHashCode>
+    ) -> AXUIElement? {
+        guard depth < 12, visited.insert(CFHash(element)).inserted else { return nil }
+
+        var focusedValue: CFTypeRef?
+        let isFocused = AXUIElementCopyAttributeValue(
+            element,
+            kAXFocusedAttribute as CFString,
+            &focusedValue
+        ) == .success && (focusedValue as? Bool == true)
+
+        if isEditableTextElement(element) {
+            return element
+        }
+
+        var childrenValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXChildrenAttribute as CFString,
+            &childrenValue
+        ) == .success,
+              let children = childrenValue as? [AXUIElement]
+        else { return nil }
+
+        let orderedChildren = isFocused ? children : children.reversed()
+        for child in orderedChildren {
+            if let match = findEditableTextElement(
+                in: child,
+                depth: depth + 1,
+                visited: &visited
+            ) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    private func systemWideFocusedElement() -> AXUIElement? {
+        let systemWideElement = AXUIElementCreateSystemWide()
+        var focusedValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            systemWideElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedValue
+        ) == .success,
+              let focusedValue
+        else { return nil }
+        return (focusedValue as! AXUIElement)
+    }
+
     private func focusedApplicationElement() -> AXUIElement? {
         let systemWideElement = AXUIElementCreateSystemWide()
         var focusedApplicationValue: CFTypeRef?
@@ -221,17 +346,6 @@ final class ClipboardPanelController {
     }
 
     private func isEditableTextElement(_ element: AXUIElement) -> Bool {
-        var editableValue: CFTypeRef?
-        if AXUIElementCopyAttributeValue(
-            element,
-            "AXEditable" as CFString,
-            &editableValue
-        ) == .success,
-           let isEditable = editableValue as? Bool,
-           isEditable {
-            return true
-        }
-
         var roleValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
             element,
@@ -261,7 +375,17 @@ final class ClipboardPanelController {
         return AXValueCreate(.cfRange, &caretRange)
     }
 
-    private func windowAnchor(for application: NSRunningApplication?) -> TextAnchor? {
+    private func fallbackAnchor(for application: NSRunningApplication?) -> TextAnchor? {
+        guard let application, let window = windowBounds(for: application) else { return nil }
+
+        if application.bundleIdentifier == "com.openai.codex" {
+            return anchor(for: ClipboardPanelPlacement.composerAnchor(in: window))
+        }
+
+        return anchor(for: window)
+    }
+
+    private func windowBounds(for application: NSRunningApplication?) -> CGRect? {
         guard let application else { return nil }
 
         let windows = CGWindowListCopyWindowInfo(
@@ -269,20 +393,27 @@ final class ClipboardPanelController {
             kCGNullWindowID
         ) as? [[String: Any]]
 
-        guard let window = windows?.first(where: { info in
+        let candidates = windows?.compactMap { info -> CGRect? in
             let ownerPID = (info[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value
             let layer = (info[kCGWindowLayer as String] as? NSNumber)?.intValue
-            return ownerPID == application.processIdentifier && layer == 0
-        }),
-        let bounds = window[kCGWindowBounds as String] as? NSDictionary,
-        let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary),
-        rect.width > 1,
-        rect.height > 1
+            guard ownerPID == application.processIdentifier,
+                  layer == 0,
+                  let bounds = info[kCGWindowBounds as String] as? NSDictionary,
+                  let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary),
+                  rect.width > 1,
+                  rect.height > 1
+            else { return nil }
+            return rect
+        }
+
+        guard let rect = candidates?.max(by: { lhs, rhs in
+            lhs.width * lhs.height < rhs.width * rhs.height
+        })
         else {
             return nil
         }
 
-        return anchor(for: rect)
+        return rect
     }
 
     private func bounds(of element: AXUIElement, for range: CFTypeRef) -> CGRect? {

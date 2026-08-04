@@ -7,6 +7,13 @@ v1 implementation complete; Liquid Glass picker and caret-anchored Windows+V beh
 ## Latest Completed Task
 
 - Date: 2026-08-04
+- Task: Fix Codex composer positioning
+- Summary: Codex exposes its focused UI as a full-window `AXGroup` instead of an editable caret. The picker now rejects that false-positive, selects the largest normal Codex window (not its 32 px title-bar window), and uses a deterministic anchor 96 px above the composer area. Apps exposing a real text role continue to use the exact caret/selection anchor.
+- Validation: 14/14 unit tests passed; Debug build passed; Codex hotkey smoke moved the 460×300 picker from `Y=46` at the top to `Y=548` above the composer area without using mouse coordinates; no private history screenshot was captured.
+
+## Previous Completed Tasks
+
+- Date: 2026-08-04
 - Task: Liquid Glass styling and active-field positioning fix
 - Summary: Added native macOS 26 Liquid Glass surfaces, glass controls, and materialized picker entrance with a macOS 14–25 fallback. The picker now reads the system-wide focused Accessibility element and selected range before falling back to the focused app window; it no longer follows the mouse when a target app exists. Accessibility is prompted when the hotkey needs accurate anchoring or automatic paste.
 - Validation: 10/10 unit tests passed; Debug test build passed; picker smoke showed Liquid Glass and placement above a TextEdit text area; settings smoke showed rendered Liquid Glass settings above another app.
@@ -82,7 +89,7 @@ v1 implementation complete; Liquid Glass picker and caret-anchored Windows+V beh
 **What was done**
 
 - Passed captured target app into the picker instead of re-reading a possibly changed frontmost app.
-- Used focused AX caret/selection bounds and per-screen coordinate conversion; mouse location is fallback when Accessibility cannot identify text input.
+- Used focused AX caret/selection bounds and per-screen coordinate conversion; deterministic target-window fallback when Accessibility cannot identify text input.
 - Replaced subtle open transition with a spring pop-up that rises from the field area.
 
 **Validation**
