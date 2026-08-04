@@ -45,6 +45,22 @@ v1 implementation complete; Liquid Glass picker and caret-anchored Windows+V beh
 
 ## Task History
 
+### 2026-08-04 — Fix caret-anchored picker positioning
+
+**What was done**
+
+- Removed mouse-position anchoring completely.
+- Resolved the focused target application through Accessibility before activating clipboard UI, with the frontmost app as fallback and no stale target reuse.
+- Anchor to the insertion caret at the end of the selected range, with target-window fallback when an app does not expose editable text geometry.
+- Fixed the panel-size race where replacing the SwiftUI content temporarily reduced the `NSPanel` to zero size before positioning.
+- Added per-display Accessibility-to-AppKit coordinate conversion and deterministic placement tests.
+
+**Validation**
+
+- 13/13 unit tests passed and the Debug build passed.
+- In a fictitious TextEdit document, the mouse remained at `x=1292` while the caret resolved near `x=511`; the 460 px picker opened centered at `x=281` and moved vertically from the erroneous top-edge `y=33` to `y=183` beside the field.
+- No clipboard-history screenshot was saved during this test to avoid capturing private entries.
+
 ### 2026-08-04 — Visual menu audit and picker polish
 
 **What was done**

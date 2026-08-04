@@ -93,10 +93,9 @@ final class AppState: ObservableObject {
 
     func showPanel() {
         let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
-        if let frontmostApplication = NSWorkspace.shared.frontmostApplication,
-           frontmostApplication.processIdentifier != currentProcessIdentifier {
-            targetApplication = frontmostApplication
-        }
+        targetApplication = panelController.targetApplication(
+            excluding: currentProcessIdentifier
+        )
 
         if !AXIsProcessTrusted() {
             statusMessage = "Ative Accessibility para posicionar junto ao campo e colar automaticamente."

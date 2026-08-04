@@ -12,9 +12,51 @@ private final class ClipboardPanel: NSPanel {
     }
 }
 
+enum ClipboardPanelPlacement {
+    static func origin(
+        anchor: NSRect,
+        panelSize: NSSize,
+        visibleFrame: NSRect,
+        margin: CGFloat = 12
+    ) -> NSPoint {
+        let minimumX = visibleFrame.minX + margin
+        let maximumX = max(minimumX, visibleFrame.maxX - panelSize.width - margin)
+        let originX = min(max(anchor.midX - panelSize.width / 2, minimumX), maximumX)
+
+        var originY = anchor.maxY + margin
+        if originY + panelSize.height > visibleFrame.maxY - margin {
+            originY = anchor.minY - panelSize.height - margin
+        }
+        let minimumY = visibleFrame.minY + margin
+        let maximumY = max(minimumY, visibleFrame.maxY - panelSize.height - margin)
+        originY = min(max(originY, minimumY), maximumY)
+
+        return NSPoint(x: originX, y: originY)
+    }
+}
+
 @MainActor
 final class ClipboardPanelController {
     private var panel: ClipboardPanel?
+    private let pickerSize = NSSize(width: 460, height: 300)
+
+    func targetApplication(excluding processIdentifier: pid_t) -> NSRunningApplication? {
+        if AXIsProcessTrusted(), let focusedApplication = focusedApplicationElement() {
+            var focusedProcessIdentifier: pid_t = 0
+            if AXUIElementGetPid(focusedApplication, &focusedProcessIdentifier) == .success,
+               focusedProcessIdentifier != processIdentifier,
+               let application = NSRunningApplication(processIdentifier: focusedProcessIdentifier) {
+                return application
+            }
+        }
+
+        guard let frontmostApplication = NSWorkspace.shared.frontmostApplication,
+              frontmostApplication.processIdentifier != processIdentifier
+        else {
+            return nil
+        }
+        return frontmostApplication
+    }
 
     func show(
         store: ClipboardStore,
@@ -22,6 +64,10 @@ final class ClipboardPanelController {
         onSelect: @escaping (ClipboardItem) -> Void,
         onTogglePin: @escaping (ClipboardItem) -> Void
     ) {
+        // Resolve the caret before creating or activating any clipboard UI so focus
+        // still belongs to the app where the user intends to paste.
+        let anchor = textAnchor(for: targetApplication)
+            ?? windowAnchor(for: targetApplication)
         let panel = panel ?? makePanel()
         self.panel = panel
         panel.contentViewController = NSHostingController(
@@ -32,7 +78,8 @@ final class ClipboardPanelController {
                 onClose: { [weak self] in self?.close() }
             )
         )
-        positionPanel(panel, targetApplication: targetApplication)
+        panel.setContentSize(pickerSize)
+        positionPanel(panel, anchor: anchor)
         panel.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKey()
@@ -44,7 +91,7 @@ final class ClipboardPanelController {
 
     private func makePanel() -> ClipboardPanel {
         let panel = ClipboardPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
+            contentRect: NSRect(origin: .zero, size: pickerSize),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -59,10 +106,7 @@ final class ClipboardPanelController {
         return panel
     }
 
-    private func positionPanel(_ panel: NSPanel, targetApplication: NSRunningApplication?) {
-        let anchor = textAnchor(for: targetApplication)
-            ?? windowAnchor(for: targetApplication)
-            ?? (targetApplication == nil ? mouseAnchor() : nil)
+    private func positionPanel(_ panel: NSPanel, anchor: TextAnchor?) {
         guard let anchor else {
             panel.center()
             return
@@ -71,23 +115,14 @@ final class ClipboardPanelController {
         let screen = anchor.screen
         let selection = anchor.rect
         let visibleFrame = screen.visibleFrame
-        let panelSize = panel.frame.size
-        let horizontalMargin: CGFloat = 12
-        let verticalMargin: CGFloat = 12
-
-        let minimumX = visibleFrame.minX + horizontalMargin
-        let maximumX = max(minimumX, visibleFrame.maxX - panelSize.width - horizontalMargin)
-        let originX = min(max(selection.midX - panelSize.width / 2, minimumX), maximumX)
-
-        var originY = selection.maxY + verticalMargin
-        if originY + panelSize.height > visibleFrame.maxY - verticalMargin {
-            originY = selection.minY - panelSize.height - verticalMargin
-        }
-        let minimumY = visibleFrame.minY + verticalMargin
-        let maximumY = max(minimumY, visibleFrame.maxY - panelSize.height - verticalMargin)
-        originY = min(max(originY, minimumY), maximumY)
-
-        panel.setFrameOrigin(NSPoint(x: originX, y: originY))
+        let panelSize = pickerSize
+        panel.setFrameOrigin(
+            ClipboardPanelPlacement.origin(
+                anchor: selection,
+                panelSize: panelSize,
+                visibleFrame: visibleFrame
+            )
+        )
     }
 
     private struct TextAnchor {
@@ -99,14 +134,9 @@ final class ClipboardPanelController {
         guard AXIsProcessTrusted(), let application else { return nil }
 
         let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
-        let focusedApplication = focusedApplicationElement()
-        let positioningApplication = focusedApplication ?? applicationElement
-        let focusedElement = focusedApplication.flatMap(focusedElement(for:))
-            ?? focusedElement(for: applicationElement)
-
-        guard let focusedElement else {
-            return focusedWindowFrame(for: positioningApplication).flatMap(anchor(for:))
-        }
+        guard let focusedElement = focusedElement(for: applicationElement),
+              isEditableTextElement(focusedElement)
+        else { return nil }
 
         var selectedRangeValue: CFTypeRef?
         if AXUIElementCopyAttributeValue(
@@ -115,15 +145,20 @@ final class ClipboardPanelController {
             &selectedRangeValue
         ) == .success,
            let selectedRangeValue,
-           let bounds = bounds(of: focusedElement, for: selectedRangeValue) {
-            return anchor(for: bounds)
+           let rangeForCaret = caretRange(from: selectedRangeValue) {
+            if let caretBounds = bounds(of: focusedElement, for: rangeForCaret) {
+                return anchor(for: caretBounds)
+            }
+            if let selectionBounds = bounds(of: focusedElement, for: selectedRangeValue) {
+                return anchor(for: selectionBounds)
+            }
         }
 
         if let focusedFrame = frame(of: focusedElement) {
             return anchor(for: focusedFrame)
         }
 
-        return focusedWindowFrame(for: positioningApplication).flatMap(anchor(for:))
+        return nil
     }
 
     private func anchor(for accessibilityRect: CGRect) -> TextAnchor? {
@@ -134,28 +169,24 @@ final class ClipboardPanelController {
             height: max(accessibilityRect.height, 1)
         )
 
-        guard let referenceScreen = NSScreen.main ?? NSScreen.screens.first else { return nil }
-        let cocoaRect = NSRect(
-            x: rect.minX,
-            y: referenceScreen.frame.maxY - rect.maxY,
-            width: rect.width,
-            height: rect.height
-        )
-        if let screen = NSScreen.screens.first(where: {
-            $0.frame.contains(NSPoint(x: cocoaRect.midX, y: cocoaRect.midY))
-        }) {
+        let accessibilityCenter = CGPoint(x: rect.midX, y: rect.midY)
+        for screen in NSScreen.screens {
+            guard let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+                continue
+            }
+            let displayBounds = CGDisplayBounds(CGDirectDisplayID(screenNumber.uint32Value))
+            guard displayBounds.contains(accessibilityCenter) else { continue }
+
+            let cocoaRect = NSRect(
+                x: screen.frame.minX + rect.minX - displayBounds.minX,
+                y: screen.frame.maxY - (rect.maxY - displayBounds.minY),
+                width: rect.width,
+                height: rect.height
+            )
             return TextAnchor(screen: screen, rect: cocoaRect)
         }
 
-        return TextAnchor(screen: referenceScreen, rect: cocoaRect)
-    }
-
-    private func mouseAnchor() -> TextAnchor? {
-        let mouseLocation = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) ?? NSScreen.main else {
-            return nil
-        }
-        return TextAnchor(screen: screen, rect: NSRect(origin: mouseLocation, size: .zero))
+        return nil
     }
 
     private func focusedElement(for applicationElement: AXUIElement) -> AXUIElement? {
@@ -189,20 +220,45 @@ final class ClipboardPanelController {
         return (focusedApplicationValue as! AXUIElement)
     }
 
-    private func focusedWindowFrame(for applicationElement: AXUIElement) -> CGRect? {
-        var windowValue: CFTypeRef?
-        guard
-            AXUIElementCopyAttributeValue(
-                applicationElement,
-                kAXFocusedWindowAttribute as CFString,
-                &windowValue
-            ) == .success,
-            let windowValue
-        else {
-            return nil
+    private func isEditableTextElement(_ element: AXUIElement) -> Bool {
+        var editableValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(
+            element,
+            "AXEditable" as CFString,
+            &editableValue
+        ) == .success,
+           let isEditable = editableValue as? Bool,
+           isEditable {
+            return true
         }
-        let windowElement = (windowValue as! AXUIElement)
-        return frame(of: windowElement)
+
+        var roleValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXRoleAttribute as CFString,
+            &roleValue
+        ) == .success,
+              let role = roleValue as? String
+        else { return false }
+
+        return role == kAXTextFieldRole as String
+            || role == kAXTextAreaRole as String
+            || role == kAXComboBoxRole as String
+    }
+
+    private func caretRange(from selectedRangeValue: CFTypeRef) -> CFTypeRef? {
+        guard CFGetTypeID(selectedRangeValue) == AXValueGetTypeID() else { return nil }
+        let rangeValue = selectedRangeValue as! AXValue
+        guard AXValueGetType(rangeValue) == .cfRange else { return nil }
+
+        var selectedRange = CFRange()
+        guard AXValueGetValue(rangeValue, .cfRange, &selectedRange) else { return nil }
+
+        var caretRange = CFRange(
+            location: selectedRange.location + selectedRange.length,
+            length: 0
+        )
+        return AXValueCreate(.cfRange, &caretRange)
     }
 
     private func windowAnchor(for application: NSRunningApplication?) -> TextAnchor? {
@@ -245,7 +301,12 @@ final class ClipboardPanelController {
         let axValue = boundsValue as! AXValue
 
         var rect = CGRect.zero
-        guard AXValueGetValue(axValue, .cgRect, &rect), !rect.isNull else { return nil }
+        guard AXValueGetValue(axValue, .cgRect, &rect),
+              !rect.isNull,
+              rect.minX.isFinite,
+              rect.minY.isFinite,
+              rect.height > 0
+        else { return nil }
         return rect
     }
 

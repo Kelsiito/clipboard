@@ -122,4 +122,37 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("⇧"))
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("V"))
     }
+
+    func testPanelPlacementUsesCaretAnchor() {
+        let origin = ClipboardPanelPlacement.origin(
+            anchor: NSRect(x: 700, y: 180, width: 1, height: 22),
+            panelSize: NSSize(width: 460, height: 300),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 950)
+        )
+
+        XCTAssertEqual(origin.x, 470.5, accuracy: 0.001)
+        XCTAssertEqual(origin.y, 214, accuracy: 0.001)
+    }
+
+    func testPanelPlacementFlipsBelowCaretNearTopEdge() {
+        let origin = ClipboardPanelPlacement.origin(
+            anchor: NSRect(x: 700, y: 920, width: 1, height: 22),
+            panelSize: NSSize(width: 460, height: 300),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 950)
+        )
+
+        XCTAssertEqual(origin.x, 470.5, accuracy: 0.001)
+        XCTAssertEqual(origin.y, 608, accuracy: 0.001)
+    }
+
+    func testPanelPlacementClampsToVisibleScreen() {
+        let origin = ClipboardPanelPlacement.origin(
+            anchor: NSRect(x: 5, y: 5, width: 1, height: 22),
+            panelSize: NSSize(width: 460, height: 300),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 950)
+        )
+
+        XCTAssertEqual(origin.x, 12, accuracy: 0.001)
+        XCTAssertEqual(origin.y, 39, accuracy: 0.001)
+    }
 }
