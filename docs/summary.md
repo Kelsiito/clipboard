@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v1 implementation complete locally; compact picker UX update pending publication.
+v1 implementation complete; compact picker UX update ready for public repo.
 
 ## Latest Completed Task
 
@@ -10,8 +10,8 @@ v1 implementation complete locally; compact picker UX update pending publication
 - Task: Compact picker UX and pinned history
 - Summary: Added smooth hotkey animation, explicit close button, outside-deactivation dismissal, click-to-paste, three-row viewport with scroll, persistent pinning up to three items, Accessibility-aware positioning above focused text, and floating settings window.
 - Validation: 10/10 unit tests passed; Debug build passed; compact picker screenshot verified; launch/hotkey smoke passed. Outside-click automation skipped because System Events lacked Accessibility permission.
-- Git commit: pending.
-- Git push status: pending.
+- Git commit: `5b37eaf`.
+- Git push status: pending verification.
 
 - Date: 2026-08-04
 - Task: Implement clipboard macOS MVP
