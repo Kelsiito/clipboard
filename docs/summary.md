@@ -10,8 +10,8 @@ v1 implementation complete; settings rendering fix ready for public repo.
 - Task: Fix blank settings window
 - Summary: Rebuilt the custom settings window with an explicit `NSHostingController` frame, autoresizing, fixed content size, and minimum size so all settings sections render.
 - Validation: 10/10 unit tests passed; Debug build passed; settings window screenshot showed Hotkey, Histórico, and Colagem automática; launch smoke passed.
-- Git commit: pending.
-- Git push status: pending.
+- Git commit: `a07b211`.
+- Git push status: public `Kelsiito/clipboard`; remote verification pending final SHA check.
 
 - Date: 2026-08-04
 - Task: Compact picker UX and pinned history
