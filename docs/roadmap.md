@@ -9,7 +9,7 @@
 - Capture useful clipboard content locally.
 - Open history with a configurable global hotkey.
 - Paste the selected item back into the previously active app.
-- Keep UI small, keyboard-friendly, and Dock-visible.
+- Keep UI small, keyboard-friendly, and visible only in the menu bar.
 
 ## Non-goals
 
@@ -62,7 +62,7 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 
 ## Phase 3 — UI/UX Polish
 
-- Add settings, keyboard navigation, Accessibility status, Dock behavior, and icon polish.
+- Add settings, keyboard navigation, Accessibility status, menu-bar behavior, and icon polish.
 
 ## Phase 4 — Testing & QA
 
@@ -90,5 +90,5 @@ Swift 5 mode, SwiftUI, AppKit, Carbon hotkeys, ApplicationServices Accessibility
 
 - App builds/tests successfully.
 - Text, images, and file references persist and paste correctly.
-- Hotkey/settings/Dock/menu behavior validated.
+- Hotkey/settings/menu-bar/menu behavior validated.
 - Docs updated, commit created, public repo pushed, remote verified.

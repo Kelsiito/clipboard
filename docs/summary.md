@@ -2,13 +2,20 @@
 
 ## Current Status
 
-v1 implementation complete locally. Xcode build and unit tests pass; GitHub publication remains final step.
+v1 implementation complete. Xcode build and unit tests pass; public GitHub repository is up to date.
 
 ## Latest Completed Task
 
 - Date: 2026-08-04
+- Task: Move clipboard from Dock to menu bar
+- Summary: Converted the app to a menu-bar-only agent, matching the Amphetamine-style top-bar placement; added a compact menu with `Definições…` and `Sair`; kept the floating picker and `⌘⇧V` workflow.
+- Validation: `LSUIElement=true` confirmed in the built bundle; unit tests, Debug build, and launch smoke passed.
+- Git commit: pending.
+- Git push status: pending.
+
+- Date: 2026-08-04
 - Task: Implement clipboard macOS MVP
-- Summary: Added pasteboard capture, persistent text/image/file history, global hotkey, picker panel, automatic paste flow, settings, tests, and Dock/App icon.
+- Summary: Added pasteboard capture, persistent text/image/file history, global hotkey, picker panel, automatic paste flow, settings, tests, and App icon.
 - Files changed: Project sources, tests, docs, icon assets.
 - Commands run: Xcode/toolchain checks; icon generation and asset conversion; `xcodebuild test`; `xcodebuild build`; app launch smoke.
 - Validation: 8/8 unit tests passed; Debug build passed; bundle launched and exited cleanly; icon catalog and `Info.plist` validated.

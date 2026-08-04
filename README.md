@@ -3,6 +3,7 @@
 Clipboard history app for macOS.
 
 `clipboard` watches the general pasteboard, keeps local text/images/file references, and opens a simple Windows+V-style picker with `⌘⇧V`.
+It runs as a menu-bar-only app, like Amphetamine, with no Dock presence.
 
 ## Requirements
 
@@ -14,7 +15,7 @@ Clipboard history app for macOS.
 1. Open `clipboard.xcodeproj` in Xcode.
 2. Select the `clipboard` scheme and `My Mac`.
 3. Build and run.
-4. Open `clipboard > Definições…` and grant Accessibility when automatic paste is requested.
+4. Click the clipboard icon in the menu bar and choose `Definições…`; grant Accessibility when automatic paste is requested.
 
 The app is intentionally local-only. History is stored under `~/Library/Application Support/clipboard/`. File entries store bookmarks/references; original files are never copied or deleted.
 
