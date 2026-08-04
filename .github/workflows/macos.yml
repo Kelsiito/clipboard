@@ -10,11 +10,15 @@ permissions:
 
 jobs:
   test-and-build:
-    runs-on: macos-14
+    # Liquid Glass symbols are available only when compiling with the macOS 26 SDK.
+    runs-on: macos-26
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: xcodebuild -version
 
       - name: Run tests
         run: xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform=macOS' test
