@@ -10,8 +10,8 @@ v1 implementation complete. Xcode build and unit tests pass; public GitHub repos
 - Task: Move clipboard from Dock to menu bar
 - Summary: Converted the app to a menu-bar-only agent, matching the Amphetamine-style top-bar placement; added a compact menu with `Definições…` and `Sair`; kept the floating picker and `⌘⇧V` workflow.
 - Validation: `LSUIElement=true` confirmed in the built bundle; unit tests, Debug build, and launch smoke passed.
-- Git commit: pending.
-- Git push status: pending.
+- Git commit: `6bad9ba`.
+- Git push status: pending verification.
 
 - Date: 2026-08-04
 - Task: Implement clipboard macOS MVP
