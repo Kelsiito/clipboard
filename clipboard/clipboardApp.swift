@@ -10,12 +10,12 @@ struct ClipboardApp: App {
             Button {
                 appState.showSettings()
             } label: {
-                Label("Definições…", systemImage: "gearshape")
+                Label("Settings…", systemImage: "gearshape")
             }
 
             Divider()
 
-            Button("Sair") {
+            Button("Quit") {
                 NSApp.terminate(nil)
             }
         }

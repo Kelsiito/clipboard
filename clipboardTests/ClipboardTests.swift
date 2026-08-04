@@ -73,6 +73,29 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(decoded.isPinned)
     }
 
+    func testContentLabelsUseEnglishCopy() {
+        let textItem = ClipboardItem(
+            fingerprint: "text",
+            text: "hello",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let imageItem = ClipboardItem(
+            fingerprint: "image",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "public.png",
+            files: []
+        )
+
+        XCTAssertEqual(textItem.kindLabel, "Text")
+        XCTAssertEqual(imageItem.kindLabel, "Image")
+        XCTAssertEqual(imageItem.preview, "Copied image")
+    }
+
     @MainActor
     func testStoreClearRemovesHistoryOnly() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

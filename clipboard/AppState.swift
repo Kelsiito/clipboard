@@ -16,7 +16,7 @@ final class AppState: ObservableObject {
                 return
             }
             if !hotKeyManager.register(hotKey) {
-                statusMessage = "Hotkey indisponível; mantida configuração anterior."
+                statusMessage = "Hotkey unavailable; previous configuration kept."
                 hotKey = oldHotKey
             } else {
                 oldHotKey = hotKey
@@ -74,7 +74,7 @@ final class AppState: ObservableObject {
         monitor.start()
         oldHotKey = hotKey
         if !hotKeyManager.register(hotKey) {
-            statusMessage = "Não foi possível registar \(hotKey.displayString)."
+            statusMessage = "Could not register \(hotKey.displayString)."
         }
         accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -98,7 +98,7 @@ final class AppState: ObservableObject {
         )
 
         if !AXIsProcessTrusted() {
-            statusMessage = "Ative Accessibility para posicionar junto ao campo e colar automaticamente."
+            statusMessage = "Enable Accessibility to position the picker near the field and paste automatically."
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
         }
@@ -115,7 +115,7 @@ final class AppState: ObservableObject {
         let shouldPin = !item.isPinned
         guard store.setPinned(item.id, pinned: shouldPin) else {
             if shouldPin {
-                statusMessage = "Máximo de 3 itens afixados."
+                statusMessage = "Maximum of 3 pinned items."
             }
             return
         }
@@ -137,7 +137,7 @@ final class AppState: ObservableObject {
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.setContentSize(settingsSize)
             window.minSize = settingsSize
-            window.title = "Definições — clipboard"
+            window.title = "Settings — clipboard"
             window.titlebarAppearsTransparent = true
             window.isOpaque = false
             window.backgroundColor = .clear
@@ -157,13 +157,13 @@ final class AppState: ObservableObject {
 
     func clearHistory() {
         store.clear()
-        statusMessage = "Histórico limpo."
+        statusMessage = "History cleared."
     }
 
     func beginRecordingHotKey() {
         stopRecordingHotKey()
         isRecordingHotKey = true
-        statusMessage = "Prima nova combinação…"
+        statusMessage = "Press a new combination…"
         recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self else { return event }
             if event.keyCode == 53 {
@@ -176,10 +176,10 @@ final class AppState: ObservableObject {
             if self.hotKeyManager.register(candidate) {
                 self.oldHotKey = self.hotKey
                 self.hotKey = candidate
-                self.statusMessage = "Hotkey definida: \(candidate.displayString)"
+                self.statusMessage = "Hotkey set: \(candidate.displayString)"
                 self.stopRecordingHotKey()
             } else {
-                self.statusMessage = "Combinação indisponível."
+                self.statusMessage = "Combination unavailable."
                 self.stopRecordingHotKey()
             }
             return nil
@@ -190,7 +190,7 @@ final class AppState: ObservableObject {
         if let recordingMonitor { NSEvent.removeMonitor(recordingMonitor) }
         recordingMonitor = nil
         isRecordingHotKey = false
-        if statusMessage == "Prima nova combinação…" {
+        if statusMessage == "Press a new combination…" {
             statusMessage = nil
         }
     }
@@ -216,7 +216,7 @@ final class AppState: ObservableObject {
 
         guard let targetApplication else { return }
         guard AXIsProcessTrusted() else {
-            statusMessage = "Ative Accessibility para colagem automática."
+            statusMessage = "Enable Accessibility for automatic paste."
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
             return

@@ -38,41 +38,41 @@ struct SettingsView: View {
         Form {
             Section("Hotkey") {
                 HStack {
-                    Text("Abrir histórico")
+                    Text("Open history")
                     Spacer()
-                    Text(appState.isRecordingHotKey ? "Prima combinação…" : appState.hotKey.displayString)
+                    Text(appState.isRecordingHotKey ? "Press a new combination…" : appState.hotKey.displayString)
                         .monospaced()
                         .foregroundStyle(.secondary)
-                    Button(appState.isRecordingHotKey ? "Cancelar" : "Alterar") {
+                    Button(appState.isRecordingHotKey ? "Cancel" : "Change") {
                         if appState.isRecordingHotKey { appState.stopRecordingHotKey() } else { appState.beginRecordingHotKey() }
                     }
                 }
             }
 
-            Section("Histórico") {
+            Section("History") {
                 Stepper(value: $appState.historyLimit, in: 10...200, step: 10) {
                     HStack {
-                        Text("Itens guardados")
+                        Text("Stored items")
                         Spacer()
                         Text("\(appState.historyLimit)")
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Button("Limpar histórico", role: .destructive) {
+                Button("Clear history", role: .destructive) {
                     showingClearConfirmation = true
                 }
             }
 
-            Section("Colagem automática") {
+            Section("Automatic paste") {
                 HStack {
                     Label("Accessibility", systemImage: appState.isAccessibilityTrusted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     Spacer()
-                    Text(appState.isAccessibilityTrusted ? "Ativo" : "Necessário")
+                    Text(appState.isAccessibilityTrusted ? "Active" : "Required")
                         .foregroundStyle(appState.isAccessibilityTrusted ? .green : .orange)
                 }
                 if !appState.isAccessibilityTrusted {
-                    Button("Abrir Definições do Sistema") {
+                    Button("Open System Settings") {
                         appState.openAccessibilitySettings()
                     }
                 }
@@ -96,11 +96,11 @@ struct SettingsView: View {
                 .stroke(.white.opacity(0.14), lineWidth: 0.5)
         }
         .padding(16)
-        .confirmationDialog("Limpar histórico?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
-            Button("Limpar", role: .destructive) { appState.clearHistory() }
-            Button("Cancelar", role: .cancel) {}
+        .confirmationDialog("Clear history?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
+            Button("Clear", role: .destructive) { appState.clearHistory() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Remove texto, imagens e referências guardadas pela app.")
+            Text("Removes text, images, and references stored by the app.")
         }
     }
 }

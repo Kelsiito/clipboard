@@ -11,7 +11,7 @@
 - The picker shows three rows, supports scrolling, arrow navigation, `Enter`, `Esc`, click-outside dismissal, and a close button.
 - Items can be pinned, with a maximum of three pinned entries shown first.
 - Settings cover the hotkey, a 10–200 history limit, clearing app-owned history, and Accessibility status.
-- The current app UI copy is PT-PT. Repository documentation, developer-facing guidance, and source identifiers are English.
+- The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
 ## Storage and privacy
 

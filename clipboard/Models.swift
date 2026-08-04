@@ -67,10 +67,10 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
 
     var kindLabel: String {
         switch kind {
-        case .text: return "Texto"
-        case .image: return "Imagem"
-        case .files: return files.count == 1 ? "Ficheiro" : "Ficheiros"
-        case .mixed: return "Conteúdo misto"
+        case .text: return "Text"
+        case .image: return "Image"
+        case .files: return files.count == 1 ? "File" : "Files"
+        case .mixed: return "Mixed content"
         }
     }
 
@@ -79,8 +79,8 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if hasFiles { return files.map(\.name).joined(separator: ", ") }
-        if hasImage { return "Imagem copiada" }
-        return "Conteúdo copiado"
+        if hasImage { return "Copied image" }
+        return "Copied content"
     }
 
     init(

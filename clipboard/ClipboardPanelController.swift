@@ -497,7 +497,7 @@ struct ClipboardPanelView: View {
             }
 
             if items.isEmpty {
-                ContentUnavailableView("Histórico vazio", systemImage: "doc.on.clipboard")
+                ContentUnavailableView("Empty history", systemImage: "doc.on.clipboard")
                     .frame(maxWidth: .infinity, minHeight: visibleListHeight)
             } else {
                 List(items) { item in
@@ -507,9 +507,9 @@ struct ClipboardPanelView: View {
                         onTogglePin: { onTogglePin(item) }
                     )
                         .contextMenu {
-                            Button(item.isPinned ? "Desafixar" : "Afixar") { onTogglePin(item) }
+                            Button(item.isPinned ? "Unpin" : "Pin") { onTogglePin(item) }
                             Divider()
-                            Button("Colar") { onSelect(item) }
+                            Button("Paste") { onSelect(item) }
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { onSelect(item) }
@@ -571,7 +571,7 @@ struct ClipboardPanelView: View {
                     .frame(width: 28, height: 28)
             }
             .buttonStyle(.glass)
-            .accessibilityLabel("Fechar")
+            .accessibilityLabel("Close")
         } else {
             Button(action: onClose) {
                 Image(systemName: "xmark")
@@ -580,7 +580,7 @@ struct ClipboardPanelView: View {
                     .background(.white.opacity(0.08), in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Fechar")
+            .accessibilityLabel("Close")
         }
     }
 
@@ -640,7 +640,7 @@ private struct ClipboardRow: View {
                     .frame(width: 28, height: 28)
             }
             .clipboardGlassButtonStyle()
-            .help(item.isPinned ? "Desafixar" : "Afixar")
+            .help(item.isPinned ? "Unpin" : "Pin")
         }
         .padding(.vertical, 4)
         .frame(height: 64)

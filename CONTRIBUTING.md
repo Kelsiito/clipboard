@@ -57,7 +57,7 @@ Do not use real sensitive clipboard content for screenshots or automated fixture
 - Do not delete original files when changing file-history behavior.
 - Keep Accessibility requests narrow and explain user-visible fallbacks.
 - Add or update focused XCTest coverage for persistence, filtering, deduplication, limits, and geometry changes.
-- Keep source identifiers and developer documentation in English. The current app UI is PT-PT by design.
+- Keep source identifiers, user-facing strings, and developer documentation in English.
 
 ## Pull requests
 
