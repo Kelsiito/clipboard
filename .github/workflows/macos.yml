@@ -1,0 +1,23 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform=macOS' test
+
+      - name: Build
+        run: xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform=macOS' build

@@ -1,8 +1,12 @@
 .DS_Store
 build/
 DerivedData/
+.build/
+.swiftpm/
 work/
 outputs/
+*.dSYM
+*.dSYM.zip
 *.xcuserstate
 xcuserdata/
 *.xcscmblueprint
