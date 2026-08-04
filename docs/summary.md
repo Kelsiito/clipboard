@@ -45,6 +45,22 @@ v1 implementation complete; Liquid Glass picker and caret-anchored Windows+V beh
 
 ## Task History
 
+### 2026-08-04 — Visual menu audit and picker polish
+
+**What was done**
+
+- Captured and reviewed the menu-bar menu, compact picker, item context menu, settings window, hotkey recording state, and clear-history confirmation.
+- Removed the extra List focus outline while preserving selection, arrow-key navigation, and Enter-to-paste.
+- Fixed the picker height so all three visible rows show their preview and type label without clipping.
+- Fixed hotkey recording cancellation so the temporary “Prima nova combinação…” status does not remain in Definições.
+
+**Validation**
+
+- Visual audit completed with fictitious clipboard entries; original history and pasteboard restored afterwards.
+- 10/10 unit tests passed.
+- Debug build passed; `git diff --check` passed.
+- Snapshots are stored in `outputs/` for release review.
+
 ### 2026-08-04 — Anchor picker to active text field
 
 **What was done**

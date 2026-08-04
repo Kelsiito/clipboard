@@ -191,6 +191,9 @@ final class AppState: ObservableObject {
         if let recordingMonitor { NSEvent.removeMonitor(recordingMonitor) }
         recordingMonitor = nil
         isRecordingHotKey = false
+        if statusMessage == "Prima nova combinação…" {
+            statusMessage = nil
+        }
     }
 
     func openAccessibilitySettings() {

@@ -283,8 +283,9 @@ struct ClipboardPanelView: View {
 
     @State private var selectedID: UUID?
     @State private var isPresented = false
+    @FocusState private var isListFocused: Bool
 
-    private let visibleListHeight: CGFloat = 198
+    private let visibleListHeight: CGFloat = 210
 
     var body: some View {
         let items = store.items
@@ -307,9 +308,12 @@ struct ClipboardPanelView: View {
                 ContentUnavailableView("Histórico vazio", systemImage: "doc.on.clipboard")
                     .frame(maxWidth: .infinity, minHeight: visibleListHeight)
             } else {
-                List(items, selection: $selectedID) { item in
-                    ClipboardRow(item: item, onTogglePin: { onTogglePin(item) })
-                        .tag(item.id)
+                List(items) { item in
+                    ClipboardRow(
+                        item: item,
+                        isSelected: selectedID == item.id,
+                        onTogglePin: { onTogglePin(item) }
+                    )
                         .contextMenu {
                             Button(item.isPinned ? "Desafixar" : "Afixar") { onTogglePin(item) }
                             Divider()
@@ -322,8 +326,24 @@ struct ClipboardPanelView: View {
                 .scrollContentBackground(.hidden)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                 .frame(height: visibleListHeight)
+                .focused($isListFocused)
+                .focusEffectDisabled()
                 .onMoveCommand { direction in moveSelection(direction) }
-                .onSubmit { submitSelection() }
+                .onKeyPress(keys: [.upArrow, .downArrow], phases: [.down, .repeat]) { press in
+                    switch press.key {
+                    case .upArrow:
+                        moveSelection(.up)
+                    case .downArrow:
+                        moveSelection(.down)
+                    default:
+                        break
+                    }
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    submitSelection()
+                    return .handled
+                }
             }
         }
         .padding(16)
@@ -341,6 +361,7 @@ struct ClipboardPanelView: View {
             selectedID = items.first?.id
             isPresented = false
             DispatchQueue.main.async {
+                isListFocused = true
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                     isPresented = true
                 }
@@ -393,6 +414,7 @@ struct ClipboardPanelView: View {
 
 private struct ClipboardRow: View {
     let item: ClipboardItem
+    let isSelected: Bool
     let onTogglePin: () -> Void
 
     var body: some View {
@@ -430,6 +452,10 @@ private struct ClipboardRow: View {
         }
         .padding(.vertical, 4)
         .frame(height: 64)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.88) : .clear)
+        }
     }
 
     private var iconName: String {
