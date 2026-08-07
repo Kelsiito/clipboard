@@ -208,6 +208,36 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("V"))
     }
 
+    func testDefaultCaptureHotKeyIsCommandShiftTwo() {
+        XCTAssertEqual(HotKeyConfiguration.captureDefault.keyCode, 19)
+        XCTAssertTrue(HotKeyConfiguration.captureDefault.displayString.contains("⌘"))
+        XCTAssertTrue(HotKeyConfiguration.captureDefault.displayString.contains("⇧"))
+        XCTAssertTrue(HotKeyConfiguration.captureDefault.displayString.contains("2"))
+    }
+
+    func testAnnotationToolsKeepTheMVPSet() {
+        XCTAssertEqual(AnnotationTool.allCases, [.draw, .line, .arrow, .rectangle])
+    }
+
+    @MainActor
+    func testAnnotationDocumentRendersPNG() throws {
+        let image = NSImage(size: NSSize(width: 120, height: 80))
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(x: 0, y: 0, width: 120, height: 80).fill()
+        image.unlockFocus()
+
+        let document = AnnotationDocument(image: image)
+        document.selectedTool = .rectangle
+        document.begin(at: CGPoint(x: 10, y: 10), in: CGSize(width: 120, height: 80))
+        document.update(to: CGPoint(x: 90, y: 60), in: CGSize(width: 120, height: 80))
+        document.finish()
+
+        let data = try XCTUnwrap(document.renderedPNGData())
+        XCTAssertFalse(data.isEmpty)
+        XCTAssertEqual(document.marks.count, 1)
+    }
+
     func testPanelPlacementUsesCaretAnchor() {
         let origin = ClipboardPanelPlacement.origin(
             anchor: NSRect(x: 700, y: 180, width: 1, height: 22),

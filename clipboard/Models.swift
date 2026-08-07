@@ -161,6 +161,7 @@ struct HotKeyConfiguration: Codable, Equatable {
     var modifiers: UInt32
 
     static let `default` = HotKeyConfiguration(keyCode: 9, modifiers: UInt32(cmdKey | shiftKey))
+    static let captureDefault = HotKeyConfiguration(keyCode: 19, modifiers: UInt32(cmdKey | shiftKey))
 
     var displayString: String {
         var value = ""

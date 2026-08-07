@@ -12,6 +12,8 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 
 - Menu-bar-only app; it does not add a normal Dock icon.
 - Configurable global hotkey, defaulting to `⌘⇧V`.
+- Capture-and-annotate hotkey, defaulting to `⌘⇧2`, with the native macOS area selector.
+- Lightweight screenshot editor with freehand drawing, lines, arrows, rectangles, undo, and clear.
 - Persistent history for plain text, RTF data, PNG/TIFF/JPEG images, and copied file references.
 - SHA-256 fingerprints to avoid duplicate history entries.
 - 50 stored items by default, configurable from 10 to 200.
@@ -62,7 +64,18 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Settings…` and `Quit`.
+Use the pin button or an item's context menu to pin/unpin it. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Settings…`, and `Quit`.
+
+### Capture and annotate
+
+1. Press `⌘⇧2`, or choose `Capture and Annotate…` from the menu-bar menu.
+2. Select an area with the native macOS capture selector.
+3. Draw freehand or add a line, arrow, or rectangle in the editor.
+4. Choose `Copy to Clipboard` to copy the finished PNG and add it to local history.
+
+The original capture is kept in a temporary file only while the editor opens. Cancelling does not add an image to the clipboard or history. A Logitech screenshot button can be mapped to `⌘⇧2` in Logi Options+; both hotkeys can be changed in Settings.
+
+macOS may request Screen Recording permission the first time capture is used. The clipboard history and annotation editor remain local and do not upload screenshots.
 
 ### Accessibility and positioning
 
@@ -102,6 +115,8 @@ clipboard/                       App target
   GlobalHotKey.swift             Carbon global hotkey registration
   ClipboardPanelController.swift Picker window, placement, and paste UI
   SettingsView.swift             Settings UI and Liquid Glass helpers
+  ScreenshotCapture.swift        Native area-capture process and temporary-file lifecycle
+  AnnotationEditor.swift         Screenshot markup UI and PNG rendering
 clipboardTests/                  XCTest coverage for core behavior
 docs/                            Roadmap and implementation history
 .github/workflows/               macOS test/build CI

@@ -4,18 +4,36 @@ import Foundation
 final class GlobalHotKeyManager {
     var onHotKey: (() -> Void)?
 
+    private static let signature = OSType(0x434C4950)
+    private let identifier: UInt32
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
     private var currentConfiguration: HotKeyConfiguration?
 
-    init() {
+    init(identifier: UInt32 = 1) {
+        self.identifier = identifier
         var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let userData = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, _, userData in
-                guard let userData else { return noErr }
+            { _, event, userData in
+                guard let event, let userData else { return OSStatus(eventNotHandledErr) }
                 let manager = Unmanaged<GlobalHotKeyManager>.fromOpaque(userData).takeUnretainedValue()
+                var hotKeyID = EventHotKeyID()
+                let status = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+                guard status == noErr,
+                      hotKeyID.signature == GlobalHotKeyManager.signature,
+                      hotKeyID.id == manager.identifier else {
+                    return OSStatus(eventNotHandledErr)
+                }
                 manager.onHotKey?()
                 return noErr
             },
@@ -31,7 +49,7 @@ final class GlobalHotKeyManager {
         let previous = currentConfiguration
         unregisterHotKey()
 
-        var identifier = EventHotKeyID(signature: OSType(0x434C4950), id: 1)
+        let identifier = EventHotKeyID(signature: Self.signature, id: identifier)
         var newRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
             configuration.keyCode,

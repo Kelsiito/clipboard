@@ -70,6 +70,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    @Published var captureHotKey: HotKeyConfiguration {
+        didSet {
+            UserDefaults.standard.set(try? JSONEncoder().encode(captureHotKey), forKey: Keys.captureHotKey)
+            guard hasStarted else {
+                oldCaptureHotKey = captureHotKey
+                return
+            }
+            if !captureHotKeyManager.register(captureHotKey) {
+                statusMessage = "Capture hotkey unavailable; previous configuration kept."
+                captureHotKey = oldCaptureHotKey
+            } else {
+                oldCaptureHotKey = captureHotKey
+            }
+        }
+    }
+
     @Published var historyLimit: Int {
         didSet {
             historyLimit = min(max(historyLimit, 10), 200)
@@ -94,22 +110,35 @@ final class AppState: ObservableObject {
 
     @Published private(set) var isAccessibilityTrusted = AXIsProcessTrusted()
     @Published private(set) var isRecordingHotKey = false
+    @Published private(set) var isRecordingCaptureHotKey = false
+    @Published private(set) var isCapturingScreenshot = false
     @Published var statusMessage: String?
 
     let store: ClipboardStore
 
     private let monitor = PasteboardMonitor()
-    private let hotKeyManager = GlobalHotKeyManager()
+    private let hotKeyManager = GlobalHotKeyManager(identifier: 1)
+    private let captureHotKeyManager = GlobalHotKeyManager(identifier: 2)
     private let panelController = ClipboardPanelController()
+    private let screenshotCaptureService = ScreenshotCaptureService()
+    private let annotationEditorController = AnnotationEditorController()
     private var settingsWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
     private var recordingMonitor: Any?
     private var accessibilityTimer: Timer?
     private var hasStarted = false
     private var oldHotKey: HotKeyConfiguration
+    private var oldCaptureHotKey: HotKeyConfiguration
+    private var recordingTarget: RecordingTarget?
+
+    private enum RecordingTarget {
+        case history
+        case capture
+    }
 
     private enum Keys {
         static let hotKey = "clipboard.hotKey"
+        static let captureHotKey = "clipboard.captureHotKey"
         static let historyLimit = "clipboard.historyLimit"
         static let appearance = "clipboard.appearance"
         static let material = "clipboard.material"
@@ -118,18 +147,24 @@ final class AppState: ObservableObject {
     private init() {
         store = ClipboardStore(limit: UserDefaults.standard.integer(forKey: Keys.historyLimit) == 0 ? 50 : UserDefaults.standard.integer(forKey: Keys.historyLimit))
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
+        let savedCaptureHotKey = (UserDefaults.standard.data(forKey: Keys.captureHotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .captureDefault
         let savedAppearance = UserDefaults.standard.string(forKey: Keys.appearance)
             .flatMap(ClipboardAppearance.init(rawValue:)) ?? .system
         let savedMaterial = UserDefaults.standard.string(forKey: Keys.material)
             .flatMap(ClipboardMaterial.init(rawValue:)) ?? .liquidGlass
         hotKey = savedHotKey
         oldHotKey = savedHotKey
+        captureHotKey = savedCaptureHotKey
+        oldCaptureHotKey = savedCaptureHotKey
         historyLimit = store.limit
         appearance = savedAppearance
         material = savedMaterial
 
         hotKeyManager.onHotKey = { [weak self] in
             self?.showPanel()
+        }
+        captureHotKeyManager.onHotKey = { [weak self] in
+            self?.captureAndAnnotate()
         }
         monitor.onSnapshot = { [weak self] snapshot in
             self?.store.ingest(snapshot)
@@ -141,8 +176,12 @@ final class AppState: ObservableObject {
         hasStarted = true
         monitor.start()
         oldHotKey = hotKey
+        oldCaptureHotKey = captureHotKey
         if !hotKeyManager.register(hotKey) {
             statusMessage = "Could not register \(hotKey.displayString)."
+        }
+        if !captureHotKeyManager.register(captureHotKey) {
+            statusMessage = "Could not register capture hotkey \(captureHotKey.displayString)."
         }
         accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -154,6 +193,8 @@ final class AppState: ObservableObject {
     func stop() {
         monitor.stop()
         hotKeyManager.stop()
+        captureHotKeyManager.stop()
+        annotationEditorController.close()
         accessibilityTimer?.invalidate()
         accessibilityTimer = nil
         stopRecordingHotKey()
@@ -195,7 +236,7 @@ final class AppState: ObservableObject {
         panelController.close()
 
         if settingsWindow == nil {
-            let settingsSize = NSSize(width: 520, height: 500)
+            let settingsSize = NSSize(width: 520, height: 560)
             let window = NSWindow(
                 contentRect: NSRect(origin: .zero, size: settingsSize),
                 styleMask: [.titled, .closable, .miniaturizable],
@@ -249,8 +290,18 @@ final class AppState: ObservableObject {
     }
 
     func beginRecordingHotKey() {
+        beginRecordingHotKey(for: .history)
+    }
+
+    func beginRecordingCaptureHotKey() {
+        beginRecordingHotKey(for: .capture)
+    }
+
+    private func beginRecordingHotKey(for target: RecordingTarget) {
         stopRecordingHotKey()
-        isRecordingHotKey = true
+        recordingTarget = target
+        isRecordingHotKey = target == .history
+        isRecordingCaptureHotKey = target == .capture
         statusMessage = "Press a new combination…"
         recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self else { return event }
@@ -261,15 +312,29 @@ final class AppState: ObservableObject {
             let modifiers = HotKeyConfiguration.modifiers(from: event.modifierFlags)
             guard modifiers != 0 else { return event }
             let candidate = HotKeyConfiguration(keyCode: UInt32(event.keyCode), modifiers: modifiers)
-            if self.hotKeyManager.register(candidate) {
-                self.oldHotKey = self.hotKey
-                self.hotKey = candidate
+            let registered: Bool
+            switch self.recordingTarget {
+            case .history:
+                registered = self.hotKeyManager.register(candidate)
+                if registered {
+                    self.oldHotKey = self.hotKey
+                    self.hotKey = candidate
+                }
+            case .capture:
+                registered = self.captureHotKeyManager.register(candidate)
+                if registered {
+                    self.oldCaptureHotKey = self.captureHotKey
+                    self.captureHotKey = candidate
+                }
+            case nil:
+                return event
+            }
+            if registered {
                 self.statusMessage = "Hotkey set: \(candidate.displayString)"
-                self.stopRecordingHotKey()
             } else {
                 self.statusMessage = "Combination unavailable."
-                self.stopRecordingHotKey()
             }
+            self.stopRecordingHotKey()
             return nil
         }
     }
@@ -277,7 +342,9 @@ final class AppState: ObservableObject {
     func stopRecordingHotKey() {
         if let recordingMonitor { NSEvent.removeMonitor(recordingMonitor) }
         recordingMonitor = nil
+        recordingTarget = nil
         isRecordingHotKey = false
+        isRecordingCaptureHotKey = false
         if statusMessage == "Press a new combination…" {
             statusMessage = nil
         }
@@ -286,6 +353,55 @@ final class AppState: ObservableObject {
     func openAccessibilitySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    func captureAndAnnotate() {
+        guard !isCapturingScreenshot else {
+            statusMessage = "A screen capture is already in progress."
+            return
+        }
+
+        panelController.close()
+        annotationEditorController.close()
+        settingsWindow?.orderOut(nil)
+        isCapturingScreenshot = true
+        statusMessage = "Select an area to capture…"
+
+        screenshotCaptureService.captureSelection { [weak self] result in
+            guard let self else { return }
+            self.isCapturingScreenshot = false
+            switch result {
+            case .success(let image):
+                self.statusMessage = nil
+                self.annotationEditorController.show(
+                    image: image,
+                    appearance: self.appearance,
+                    onCopy: { [weak self] data in self?.copyAnnotatedScreenshot(data) }
+                )
+            case .failure(.cancelled):
+                self.statusMessage = nil
+            case .failure(let error):
+                self.statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func copyAnnotatedScreenshot(_ data: Data) {
+        let pasteboard = NSPasteboard.general
+        monitor.suppressCapture()
+        pasteboard.clearContents()
+        guard pasteboard.setData(data, forType: .png) else {
+            statusMessage = "The annotated screenshot could not be copied."
+            return
+        }
+        store.ingest(ClipboardSnapshot(
+            text: nil,
+            richTextData: nil,
+            imageData: data,
+            imageType: NSPasteboard.PasteboardType.png.rawValue,
+            fileURLs: []
+        ))
+        statusMessage = "Annotated screenshot copied to the clipboard."
     }
 
     private func paste(_ item: ClipboardItem, format: ClipboardPasteFormat = .original) {

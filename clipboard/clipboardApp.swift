@@ -8,6 +8,14 @@ struct ClipboardApp: App {
     var body: some Scene {
         MenuBarExtra("clipboard", systemImage: "doc.on.clipboard") {
             Button {
+                appState.captureAndAnnotate()
+            } label: {
+                Label("Capture and Annotate…", systemImage: "camera.viewfinder")
+            }
+
+            Divider()
+
+            Button {
                 appState.showSettings()
             } label: {
                 Label("Settings…", systemImage: "gearshape")

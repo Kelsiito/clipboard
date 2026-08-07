@@ -42,6 +42,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - copy multiple files and verify their references;
 - restart the app and verify history persistence;
 - open the picker with the default and a changed hotkey;
+- capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - verify arrow navigation, `Enter`, `Esc`, close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Quit, and the menu-bar item;
 - test with Accessibility denied and granted;

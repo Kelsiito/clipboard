@@ -9,6 +9,7 @@ This file records user-visible changes. The project does not publish versioned b
 - Public open-source documentation in English.
 - Contributor, security, CI, and issue-reporting guidance.
 - macOS test/build workflow for pushes and pull requests.
+- Native area capture and local image annotation with drawing, line, arrow, and rectangle tools.
 
 ### Current feature set
 

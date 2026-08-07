@@ -17,6 +17,7 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - SwiftUI + AppKit macOS app targeting macOS 14+.
 - Menu-bar-only lifecycle with a default `⌘⇧V` global hotkey.
 - Plain text, RTF, PNG/TIFF/JPEG images, and file bookmarks/references.
+- Native area capture followed by a lightweight local annotation editor.
 - Local JSON persistence under `~/Library/Application Support/clipboard/`.
 - SHA-256 deduplication, a configurable 10–200 item limit, and up to three pinned items.
 - Compact picker with scrolling, keyboard navigation, close/outside-click dismissal, and smooth entrance animation.

@@ -39,21 +39,43 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 settingsSection("Hotkey") {
                     settingsCard {
-                        HStack(spacing: 12) {
-                            Text("Open history")
-                            Spacer(minLength: 12)
-                            Text(appState.isRecordingHotKey ? "Press a new combination…" : appState.hotKey.displayString)
-                                .monospaced()
-                                .foregroundStyle(.secondary)
-                            Button(appState.isRecordingHotKey ? "Cancel" : "Change") {
-                                if appState.isRecordingHotKey {
-                                    appState.stopRecordingHotKey()
-                                } else {
-                                    appState.beginRecordingHotKey()
+                        VStack(spacing: 0) {
+                            HStack(spacing: 12) {
+                                Text("Open history")
+                                Spacer(minLength: 12)
+                                Text(appState.isRecordingHotKey ? "Press a new combination…" : appState.hotKey.displayString)
+                                    .monospaced()
+                                    .foregroundStyle(.secondary)
+                                Button(appState.isRecordingHotKey ? "Cancel" : "Change") {
+                                    if appState.isRecordingHotKey {
+                                        appState.stopRecordingHotKey()
+                                    } else {
+                                        appState.beginRecordingHotKey()
+                                    }
                                 }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            HStack(spacing: 12) {
+                                Text("Capture and annotate")
+                                Spacer(minLength: 12)
+                                Text(appState.isRecordingCaptureHotKey ? "Press a new combination…" : appState.captureHotKey.displayString)
+                                    .monospaced()
+                                    .foregroundStyle(.secondary)
+                                Button(appState.isRecordingCaptureHotKey ? "Cancel" : "Change") {
+                                    if appState.isRecordingCaptureHotKey {
+                                        appState.stopRecordingHotKey()
+                                    } else {
+                                        appState.beginRecordingCaptureHotKey()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
                         }
                     }
                 }
@@ -148,7 +170,7 @@ struct SettingsView: View {
             }
             .padding(22)
         }
-        .frame(width: 520, height: 500)
+        .frame(width: 520, height: 560)
         .confirmationDialog("Clear history?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
             Button("Clear", role: .destructive) { appState.clearHistory() }
             Button("Cancel", role: .cancel) {}
