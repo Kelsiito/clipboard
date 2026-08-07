@@ -8,6 +8,10 @@
 
 <p align="center"><strong>Fast, native, open-source clipboard history for macOS.</strong><br>Everything stays on your Mac.</p>
 
+<p align="center">
+  <img src="docs/assets/clipboard-demo.gif" alt="Animated preview of the clipboard history picker" width="720">
+</p>
+
 `clipboard` is a small, local-first clipboard history app for macOS. It lives in the menu bar and opens a compact Windows+V-style picker with `⌘⇧V`.
 
 The project is source-first and intentionally simple: SwiftUI + AppKit, Apple frameworks only, no cloud, analytics, accounts, backend, or external runtime dependencies.
@@ -174,7 +178,7 @@ The planned follow-up work is tracked in [docs/roadmap.md](docs/roadmap.md).
 - [Contributing guide](CONTRIBUTING.md) for local development and pull requests
 - [Release checklist](docs/release.md) for DMG signing, notarization, and Homebrew follow-up
 - [Distribution issue](https://github.com/Kelsiito/clipboard/issues/9) for the signed DMG/Homebrew track
-- [README demo-media issue](https://github.com/Kelsiito/clipboard/issues/10) for a future synthetic GIF or screenshot
+- [README demo-media generator](scripts/render-demo-gif.sh) for the privacy-safe synthetic preview above
 
 ## Contributing
 

@@ -7,6 +7,7 @@
 - GitHub repository: [`Kelsiito/clipboard`](https://github.com/Kelsiito/clipboard)
 - Default branch: `main`
 - CI: macOS test and build workflow on pushes and pull requests
+- Source release: `v1.0.0` published without binary assets
 - Binary release: not published
 - Signing identity for the release pipeline: not configured
 
@@ -43,7 +44,7 @@ shasum -a 256 Clipboard-<version>.dmg
 
 ## GitHub Release
 
-Create a tag only after the release commit, signed DMG, checksum, changelog entry, and CI results are verified. Attach the DMG and checksum, include macOS requirements and permissions, and state that history remains local.
+For a source release, tag the validated commit and state clearly that no installable binary is attached. For a binary release, create the tag only after the signed DMG, checksum, changelog entry, and CI results are verified. Attach the DMG and checksum, include macOS requirements and permissions, and state that history remains local.
 
 Do not publish a source-only binary claim. If signing or notarization is unavailable, keep the release as a draft or defer it.
 

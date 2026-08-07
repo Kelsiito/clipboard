@@ -1,6 +1,6 @@
 # Changelog
 
-This file records user-visible changes. The project does not publish versioned binary releases yet.
+This file records user-visible changes. The project currently publishes source releases; signed binary distribution remains a follow-up.
 
 ## Unreleased
 
@@ -33,4 +33,5 @@ This file records user-visible changes. The project does not publish versioned b
 - Added a public `v1.1 — Core usability` GitHub milestone with acceptance-tested issues.
 - Enabled GitHub Discussions for questions and product feedback.
 - Added a release checklist covering signed/notarized DMG and Homebrew Cask preparation.
-- No binary release has been published yet; source builds remain unsigned.
+- Added a privacy-safe animated README preview generated from the app icon and synthetic clipboard content.
+- Published source release `v1.0.0`; signed and notarized binary distribution remains pending.
