@@ -282,7 +282,12 @@ private final class ScreenRegionSelector {
             view.autoresizingMask = [.width, .height]
             view.onSelection = { [weak self, weak window] rect in
                 guard let self, let window else { return }
-                self.finish(window.convertToScreen(rect))
+                let appKitRect = window.convertToScreen(rect)
+                let captureRect = ScreenGIFRecorder.captureRegion(
+                    for: appKitRect,
+                    in: screen.frame
+                )
+                self.finish(captureRect)
             }
             view.onCancel = { [weak self] in self?.finish(nil) }
             window.contentView = view
@@ -337,6 +342,17 @@ final class ScreenGIFRecorder {
     private var cancellationState: GIFRecordingCancellationState?
     private let regionSelector = ScreenRegionSelector()
     private var isSelecting = false
+
+    /// Converts AppKit's bottom-left screen coordinates to the top-left
+    /// coordinates expected by `screencapture -R`.
+    nonisolated static func captureRegion(for appKitRect: CGRect, in screenFrame: CGRect) -> CGRect {
+        CGRect(
+            x: appKitRect.minX,
+            y: screenFrame.maxY - appKitRect.maxY,
+            width: appKitRect.width,
+            height: appKitRect.height
+        )
+    }
 
     static func recordingArguments(region: CGRect, outputPath: String) -> [String] {
         let x = Int(region.origin.x.rounded(.down))

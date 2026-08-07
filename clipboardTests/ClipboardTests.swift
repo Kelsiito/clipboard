@@ -321,6 +321,18 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(arguments.contains("-U"))
     }
 
+    func testGIFRecorderConvertsAppKitRegionToScreenCaptureCoordinates() {
+        let appKitRegion = CGRect(x: 120, y: 700, width: 240, height: 120)
+        let screenFrame = CGRect(x: 0, y: 0, width: 1470, height: 956)
+
+        let captureRegion = ScreenGIFRecorder.captureRegion(
+            for: appKitRegion,
+            in: screenFrame
+        )
+
+        XCTAssertEqual(captureRegion, CGRect(x: 120, y: 136, width: 240, height: 120))
+    }
+
     func testPanelPlacementUsesCaretAnchor() {
         let origin = ClipboardPanelPlacement.origin(
             anchor: NSRect(x: 700, y: 180, width: 1, height: 22),
