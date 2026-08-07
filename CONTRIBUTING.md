@@ -41,7 +41,12 @@ For changes to the picker or settings, also run the relevant manual checks:
 - copy and paste an image;
 - copy multiple files and verify their references;
 - restart the app and verify history persistence;
-- open the picker with the default and a changed hotkey;
+- open the picker with the default and a changed history hotkey;
+- start and stop GIF recording with the default and a changed GIF hotkey;
+- capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
+- record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
+- verify the GIF appears in history and pastes with `⌘V`;
+- cancel a GIF recording and verify no history item or local file is created;
 - verify arrow navigation, `Enter`, `Esc`, close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Quit, and the menu-bar item;
 - test with Accessibility denied and granted;

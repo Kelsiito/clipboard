@@ -11,7 +11,10 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 ## Features
 
 - Menu-bar-only app; it does not add a normal Dock icon.
-- Configurable global hotkey, defaulting to `⌘⇧V`.
+- Configurable global hotkeys: history defaults to `⌘⇧V`, GIF recording defaults to `⌘G`.
+- Capture and annotate images from the menu-bar menu with the native macOS area selector.
+- Lightweight screenshot editor with freehand drawing, lines, arrows, rectangles, undo, and clear.
+- Record a selected screen area as an animated GIF and copy it directly to the pasteboard and history.
 - Persistent history for plain text, RTF data, PNG/TIFF/JPEG images, and copied file references.
 - SHA-256 fingerprints to avoid duplicate history entries.
 - 50 stored items by default, configurable from 10 to 200.
@@ -20,7 +23,7 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
-- Settings window for the hotkey, history limit, clearing app-owned history, and Accessibility status.
+- Settings window for both hotkeys, history limit, clearing app-owned history, and Accessibility status.
 - File bookmarks/references are stored locally; original files are never copied, moved, or deleted by the app.
 
 ## Requirements
@@ -28,6 +31,7 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 - macOS 14 or newer.
 - Xcode with a macOS SDK capable of building the project.
 - A Mac where Accessibility permission can be granted if automatic paste is desired.
+- Screen Recording permission may be required when using capture, annotation, or GIF recording.
 
 The project uses Swift 5 mode and has no Swift Package Manager, CocoaPods, or other third-party dependencies.
 
@@ -44,7 +48,7 @@ In Xcode:
 1. Select the `clipboard` scheme and `My Mac` as the run destination.
 2. Build and run.
 3. Look for the clipboard icon in the menu bar. The app is an accessory/menu-bar app, so it is not expected to appear in the Dock.
-4. Open `Settings…` from the menu-bar item to configure the hotkey and history limit.
+4. Open `Settings…` from the menu-bar item to configure both hotkeys and the history limit.
 
 The command-line equivalents are:
 
@@ -62,7 +66,28 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Settings…` and `Quit`.
+Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
+
+### Capture and annotate
+
+1. Choose `Capture and Annotate…` from the menu-bar menu, or click `Edit image` on an image in the history picker.
+2. Select an area with the native macOS capture selector.
+3. Draw freehand or add a line, arrow, or rectangle in the editor.
+4. Choose `Copy to Clipboard` to copy the finished PNG and add it to local history.
+
+The original capture is kept in a temporary file only while the editor opens. Cancelling does not add an image to the clipboard or history. The app does not replace or assume any macOS screenshot shortcut; those shortcuts remain controlled by each user's System Settings.
+
+macOS may request Screen Recording permission the first time capture is used. The clipboard history and annotation editor remain local and do not upload screenshots.
+
+### Record GIF
+
+1. Choose `Record GIF…` from the menu-bar menu.
+2. Drag over an area with the clipboard selection overlay and release the pointer; recording starts immediately.
+3. Press the GIF hotkey again (`⌘G` by default) or choose `Stop GIF Recording` from the menu bar when finished. Use `Cancel GIF Recording` to discard it.
+4. The app converts the temporary video locally, places the GIF on the pasteboard, and adds it to history.
+5. Press `⌘V` in the target app.
+
+The GIF is converted at 10 fps, capped at 1280 px wide. The temporary video is removed after conversion or cancellation. Local GIF export uses a separate future action; this flow is optimized for immediate paste.
 
 ### Accessibility and positioning
 
@@ -81,7 +106,7 @@ Clipboard history can contain sensitive information. `clipboard` keeps it on the
 
 - History is stored at `~/Library/Application Support/clipboard/history.json`.
 - The app creates its data directory with restrictive permissions and writes the history atomically.
-- Text, rich-text data, and image payloads are stored locally in the history file.
+- Text, rich-text data, image payloads, and GIF payloads are stored locally in the history file.
 - Copied files are represented by local security-scoped bookmarks/references; the original files are not copied into the history and are never deleted by clearing it.
 - Concealed, transient, and autogenerated pasteboard entries are ignored.
 - `Clear History` removes only data owned by `clipboard`; it does not empty the system pasteboard or delete source files.
@@ -102,6 +127,9 @@ clipboard/                       App target
   GlobalHotKey.swift             Carbon global hotkey registration
   ClipboardPanelController.swift Picker window, placement, and paste UI
   SettingsView.swift             Settings UI and Liquid Glass helpers
+  ScreenshotCapture.swift        Native area-capture process and temporary-file lifecycle
+  AnnotationEditor.swift         Screenshot markup UI and PNG rendering
+  ScreenGIFRecorder.swift         Native screen recording and local GIF export
 clipboardTests/                  XCTest coverage for core behavior
 docs/                            Roadmap and implementation history
 .github/workflows/               macOS test/build CI
@@ -117,13 +145,16 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 git diff --check
 ```
 
-The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, empty/legacy data, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
+The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
 
 ## Known limitations
 
 - Automatic paste and exact caret positioning depend on macOS Accessibility permission and on the target app exposing a standard editable text role.
 - Electron/WebView apps may expose only a window or group; the fallback can target the composer area but cannot know an unavailable caret coordinate.
 - File bookmarks can become stale if the original file is moved, deleted, or made inaccessible.
+- New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
+- GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
+- Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
 - The current project does not provide cloud sync, search, per-item deletion, launch-at-login, signing, notarization, or App Store packaging.
 - Builds from source are currently unsigned and should be treated as development builds.
 

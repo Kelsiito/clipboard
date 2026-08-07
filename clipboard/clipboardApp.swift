@@ -8,6 +8,34 @@ struct ClipboardApp: App {
     var body: some Scene {
         MenuBarExtra("clipboard", systemImage: "doc.on.clipboard") {
             Button {
+                appState.captureAndAnnotate()
+            } label: {
+                Label("Capture and Annotate…", systemImage: "camera.viewfinder")
+            }
+
+            if appState.isRecordingGIF {
+                Button {
+                    appState.finishGIFRecording()
+                } label: {
+                    Label("Stop GIF Recording", systemImage: "stop.circle.fill")
+                }
+
+                Button {
+                    appState.cancelGIFRecording()
+                } label: {
+                    Label("Cancel GIF Recording", systemImage: "stop.circle")
+                }
+            } else {
+                Button {
+                    appState.recordGIF()
+                } label: {
+                    Label("Record GIF…", systemImage: "record.circle")
+                }
+            }
+
+            Divider()
+
+            Button {
                 appState.showSettings()
             } label: {
                 Label("Settings…", systemImage: "gearshape")

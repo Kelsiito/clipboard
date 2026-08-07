@@ -37,23 +37,23 @@ struct SettingsView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
-                settingsSection("Hotkey") {
+                settingsSection("Hotkeys") {
                     settingsCard {
-                        HStack(spacing: 12) {
-                            Text("Open history")
-                            Spacer(minLength: 12)
-                            Text(appState.isRecordingHotKey ? "Press a new combination…" : appState.hotKey.displayString)
-                                .monospaced()
-                                .foregroundStyle(.secondary)
-                            Button(appState.isRecordingHotKey ? "Cancel" : "Change") {
-                                if appState.isRecordingHotKey {
-                                    appState.stopRecordingHotKey()
-                                } else {
-                                    appState.beginRecordingHotKey()
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        VStack(spacing: 0) {
+                            hotKeyRow(
+                                title: "Open history",
+                                configuration: appState.hotKey,
+                                target: .history
+                            )
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            hotKeyRow(
+                                title: "Record GIF",
+                                configuration: appState.gifHotKey,
+                                target: .gif
+                            )
                         }
                     }
                 }
@@ -178,6 +178,29 @@ struct SettingsView: View {
                 Color.primary.opacity(0.065),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
+    }
+
+    private func hotKeyRow(
+        title: String,
+        configuration: HotKeyConfiguration,
+        target: HotKeyTarget
+    ) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+            Spacer(minLength: 12)
+            Text(appState.isRecordingHotKey(for: target) ? "Press a new combination…" : configuration.displayString)
+                .monospaced()
+                .foregroundStyle(.secondary)
+            Button(appState.isRecordingHotKey(for: target) ? "Cancel" : "Change") {
+                if appState.isRecordingHotKey(for: target) {
+                    appState.stopRecordingHotKey()
+                } else {
+                    appState.beginRecordingHotKey(for: target)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
     }
 
     private func appearancePicker<Option: Hashable & Identifiable>(

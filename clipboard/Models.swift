@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import CryptoKit
 import Foundation
+import UniformTypeIdentifiers
 
 enum ClipboardContentKind: String, Codable {
     case text
@@ -54,6 +55,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
 
     var hasText: Bool { text?.isEmpty == false }
     var hasImage: Bool { imageData != nil }
+    var isGIF: Bool { imageType == UTType.gif.identifier }
     var hasFiles: Bool { !files.isEmpty }
     var isEmpty: Bool { !hasText && !hasImage && !hasFiles }
 
@@ -68,7 +70,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var kindLabel: String {
         switch kind {
         case .text: return "Text"
-        case .image: return "Image"
+        case .image: return isGIF ? "GIF" : "Image"
         case .files: return files.count == 1 ? "File" : "Files"
         case .mixed: return "Mixed content"
         }
@@ -79,8 +81,22 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if hasFiles { return files.map(\.name).joined(separator: ", ") }
-        if hasImage { return "Copied image" }
+        if hasImage { return isGIF ? "Copied GIF" : "Copied image" }
         return "Copied content"
+    }
+
+    /// Search-only projection. It is intentionally not persisted so filtering
+    /// cannot change the stored history format or data.
+    var searchableText: String {
+        var values = [text ?? "", preview, kindLabel]
+        values.append(contentsOf: files.flatMap { [$0.name, $0.path] })
+        return values.joined(separator: "\n")
+    }
+
+    func matchesSearch(_ query: String) -> Bool {
+        let normalizedQuery = query.searchNormalized.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else { return true }
+        return searchableText.searchNormalized.localizedStandardContains(normalizedQuery)
     }
 
     init(
@@ -132,6 +148,12 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     }
 }
 
+private extension String {
+    var searchNormalized: String {
+        folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+    }
+}
+
 struct ClipboardSnapshot {
     let text: String?
     let richTextData: Data?
@@ -161,6 +183,7 @@ struct HotKeyConfiguration: Codable, Equatable {
     var modifiers: UInt32
 
     static let `default` = HotKeyConfiguration(keyCode: 9, modifiers: UInt32(cmdKey | shiftKey))
+    static let gifDefault = HotKeyConfiguration(keyCode: 5, modifiers: UInt32(cmdKey))
 
     var displayString: String {
         var value = ""

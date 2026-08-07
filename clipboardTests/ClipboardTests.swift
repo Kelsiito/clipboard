@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import XCTest
 @testable import clipboard
 
@@ -96,6 +97,39 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(imageItem.preview, "Copied image")
     }
 
+    func testClipboardItemSearchMatchesTextCaseAndDiacritics() {
+        let item = ClipboardItem(
+            fingerprint: "search-text",
+            text: "Café receipts for GitHub",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+
+        XCTAssertTrue(item.matchesSearch("cafe"))
+        XCTAssertTrue(item.matchesSearch("GITHUB"))
+        XCTAssertFalse(item.matchesSearch("invoice"))
+        XCTAssertTrue(item.matchesSearch("   "))
+    }
+
+    func testClipboardItemSearchMatchesFileMetadata() {
+        let fileURL = URL(fileURLWithPath: "/Users/example/Documents/Quarterly Report.pdf")
+        let item = ClipboardItem(
+            fingerprint: "search-file",
+            text: nil,
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: [StoredFileReference(url: fileURL, bookmarkData: Data())]
+        )
+
+        XCTAssertTrue(item.matchesSearch("quarterly report"))
+        XCTAssertTrue(item.matchesSearch("documents"))
+        XCTAssertTrue(item.matchesSearch("pdf"))
+        XCTAssertFalse(item.matchesSearch("presentation"))
+    }
+
     func testAppearanceModesMapToExpectedColorSchemes() {
         XCTAssertNil(ClipboardAppearance.system.colorScheme)
         XCTAssertEqual(ClipboardAppearance.light.colorScheme, .light)
@@ -180,6 +214,30 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testGIFPayloadPersistsAndKeepsGIFPasteType() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory)
+        let gifData = Data("GIF89a".utf8)
+
+        store.ingest(ClipboardSnapshot(
+            text: nil,
+            richTextData: nil,
+            imageData: gifData,
+            imageType: "com.compuserve.gif",
+            fileURLs: []
+        ))
+
+        let item = try XCTUnwrap(store.items.first)
+        XCTAssertTrue(item.isGIF)
+        XCTAssertEqual(item.kindLabel, "GIF")
+        XCTAssertEqual(item.preview, "Copied GIF")
+
+        let payload = try XCTUnwrap(ClipboardPasteFormatter.payload(for: item, format: .original))
+        XCTAssertEqual(payload.imageData, gifData)
+        XCTAssertEqual(payload.imageType, "com.compuserve.gif")
+    }
+
+    @MainActor
     func testFileBookmarkPersistsAndResolves() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let source = directory.appendingPathComponent("source.txt")
@@ -206,6 +264,61 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("⌘"))
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("⇧"))
         XCTAssertTrue(HotKeyConfiguration.default.displayString.contains("V"))
+    }
+
+    func testDefaultGIFHotKeyIsCommandG() {
+        XCTAssertEqual(HotKeyConfiguration.gifDefault.keyCode, 5)
+        XCTAssertEqual(HotKeyConfiguration.gifDefault.modifiers, UInt32(cmdKey))
+        XCTAssertEqual(HotKeyConfiguration.gifDefault.displayString, "⌘G")
+    }
+
+    func testAnnotationToolsKeepTheMVPSet() {
+        XCTAssertEqual(AnnotationTool.allCases, [.draw, .line, .arrow, .rectangle])
+    }
+
+    @MainActor
+    func testAnnotationDocumentRendersPNG() throws {
+        let image = NSImage(size: NSSize(width: 120, height: 80))
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(x: 0, y: 0, width: 120, height: 80).fill()
+        image.unlockFocus()
+
+        let document = AnnotationDocument(image: image)
+        document.selectedTool = .rectangle
+        document.begin(at: CGPoint(x: 10, y: 10), in: CGSize(width: 120, height: 80))
+        document.update(to: CGPoint(x: 90, y: 60), in: CGSize(width: 120, height: 80))
+        document.finish()
+
+        let data = try XCTUnwrap(document.renderedPNGData())
+        XCTAssertFalse(data.isEmpty)
+        XCTAssertEqual(document.marks.count, 1)
+    }
+
+    func testGIFEncoderCreatesGIFData() throws {
+        let image = NSImage(size: NSSize(width: 16, height: 16))
+        image.lockFocus()
+        NSColor.systemRed.setFill()
+        NSRect(x: 0, y: 0, width: 16, height: 16).fill()
+        image.unlockFocus()
+
+        let cgImage = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+        let data = try GIFEncoder.makeGIF(from: [cgImage, cgImage])
+
+        XCTAssertTrue(data.starts(with: Data("GIF".utf8)))
+        XCTAssertGreaterThan(data.count, 20)
+    }
+
+    @MainActor
+    func testGIFRecorderUsesSelectionOverlayAndFixedRegionVideoCapture() {
+        let arguments = ScreenGIFRecorder.recordingArguments(
+            region: CGRect(x: 10, y: 20, width: 300, height: 200),
+            outputPath: "/tmp/clipboard-test.mov"
+        )
+
+        XCTAssertEqual(arguments, ["-R", "10,20,300,200", "-v", "-x", "/tmp/clipboard-test.mov"])
+        XCTAssertFalse(arguments.contains("-i"))
+        XCTAssertFalse(arguments.contains("-U"))
     }
 
     func testPanelPlacementUsesCaretAnchor() {

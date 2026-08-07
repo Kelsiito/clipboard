@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class PasteboardMonitor {
@@ -51,7 +52,10 @@ final class PasteboardMonitor {
         let richTextData = pasteboard.data(forType: .rtf)
         let imageType: NSPasteboard.PasteboardType?
         let imageData: Data?
-        if let data = pasteboard.data(forType: .png) {
+        if let data = pasteboard.data(forType: NSPasteboard.PasteboardType(UTType.gif.identifier)) {
+            imageType = NSPasteboard.PasteboardType(UTType.gif.identifier)
+            imageData = data
+        } else if let data = pasteboard.data(forType: .png) {
             imageType = .png
             imageData = data
         } else if let data = pasteboard.data(forType: .tiff) {

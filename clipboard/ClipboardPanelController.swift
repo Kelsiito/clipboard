@@ -69,7 +69,8 @@ final class ClipboardPanelController {
         appearance: ClipboardAppearance,
         material: ClipboardMaterial,
         onPaste: @escaping (ClipboardItem, ClipboardPasteFormat) -> Void,
-        onTogglePin: @escaping (ClipboardItem) -> Void
+        onTogglePin: @escaping (ClipboardItem) -> Void,
+        onEdit: @escaping (ClipboardItem) -> Void
     ) {
         // Resolve the caret before creating or activating any clipboard UI so focus
         // still belongs to the app where the user intends to paste.
@@ -85,6 +86,7 @@ final class ClipboardPanelController {
                 material: material,
                 onPaste: onPaste,
                 onTogglePin: onTogglePin,
+                onEdit: onEdit,
                 onClose: { [weak self] in self?.close() }
             )
         )
@@ -482,43 +484,61 @@ struct ClipboardPanelView: View {
     let material: ClipboardMaterial
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
     let onTogglePin: (ClipboardItem) -> Void
+    let onEdit: (ClipboardItem) -> Void
     let onClose: () -> Void
 
     @State private var selectedID: UUID?
+    @State private var searchQuery = ""
     @State private var isPresented = false
-    @FocusState private var isListFocused: Bool
+    @FocusState private var isSearchFocused: Bool
 
-    private let visibleListHeight: CGFloat = 210
+    private let visibleListHeight: CGFloat = 186
 
     var body: some View {
-        let items = store.items
+        let allItems = store.items
+        let items = allItems.filter { $0.matchesSearch(searchQuery) }
         let panelShape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "doc.on.clipboard.fill")
                     .foregroundStyle(.cyan)
                 Text("clipboard")
                     .font(.headline)
                 Spacer()
-                Text("\(items.count)")
+                Text(searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                     ? "\(allItems.count)"
+                     : "\(items.count)/\(allItems.count)")
                     .foregroundStyle(.secondary)
                     .font(.caption)
                 closeButton
             }
 
+            searchField
+
             if items.isEmpty {
-                ContentUnavailableView("Empty history", systemImage: "doc.on.clipboard")
+                ContentUnavailableView(
+                    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "Empty history"
+                        : "No matches",
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "doc.on.clipboard"
+                        : "magnifyingglass"
+                )
                     .frame(maxWidth: .infinity, minHeight: visibleListHeight)
             } else {
                 List(items) { item in
                     ClipboardRow(
                         item: item,
                         onPaste: onPaste,
-                        onTogglePin: { onTogglePin(item) }
+                        onTogglePin: { onTogglePin(item) },
+                        onEdit: { onEdit(item) }
                     )
                         .contextMenu {
                             Button(item.isPinned ? "Unpin" : "Pin") { onTogglePin(item) }
+                            if item.hasImage && !item.isGIF {
+                                Button("Edit image") { onEdit(item) }
+                            }
                             Divider()
                             Button("Paste") { onPaste(item, .original) }
                         }
@@ -531,7 +551,6 @@ struct ClipboardPanelView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
                 .frame(height: visibleListHeight)
-                .focused($isListFocused)
                 .focusEffectDisabled()
                 .onMoveCommand { direction in moveSelection(direction) }
                 .onKeyPress(keys: [.upArrow, .downArrow], phases: [.down, .repeat]) { press in
@@ -549,6 +568,10 @@ struct ClipboardPanelView: View {
                     submitSelection()
                     return .handled
                 }
+                .onKeyPress(.escape) {
+                    clearSearchOrClose()
+                    return .handled
+                }
             }
         }
         .padding(16)
@@ -563,13 +586,69 @@ struct ClipboardPanelView: View {
             selectedID = items.first?.id
             isPresented = false
             DispatchQueue.main.async {
-                isListFocused = true
+                isSearchFocused = true
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                     isPresented = true
                 }
             }
         }
-        .onExitCommand(perform: onClose)
+        .onChange(of: searchQuery) { _ in
+            keepSelectionVisible(in: items)
+        }
+        .onChange(of: store.items) { _ in
+            keepSelectionVisible(in: items)
+        }
+        .onExitCommand(perform: clearSearchOrClose)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+
+            TextField("Search history", text: $searchQuery)
+                .textFieldStyle(.plain)
+                .focused($isSearchFocused)
+                .onKeyPress(keys: [.upArrow, .downArrow], phases: [.down, .repeat]) { press in
+                    switch press.key {
+                    case .upArrow:
+                        moveSelection(.up)
+                    case .downArrow:
+                        moveSelection(.down)
+                    default:
+                        break
+                    }
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    submitSelection()
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    clearSearchOrClose()
+                    return .handled
+                }
+
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                    isSearchFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 32)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
@@ -595,7 +674,7 @@ struct ClipboardPanelView: View {
     }
 
     private func moveSelection(_ direction: MoveCommandDirection) {
-        let items = store.items
+        let items = store.items.filter { $0.matchesSearch(searchQuery) }
         guard !items.isEmpty else { return }
         let currentIndex = selectedID.flatMap { id in items.firstIndex { $0.id == id } } ?? 0
         let nextIndex: Int
@@ -608,9 +687,29 @@ struct ClipboardPanelView: View {
     }
 
     private func submitSelection() {
-        let items = store.items
+        let items = store.items.filter { $0.matchesSearch(searchQuery) }
         guard let selectedID, let item = items.first(where: { $0.id == selectedID }) else { return }
         onPaste(item, .original)
+    }
+
+    private func keepSelectionVisible(in items: [ClipboardItem]) {
+        guard !items.isEmpty else {
+            selectedID = nil
+            return
+        }
+        guard let selectedID, items.contains(where: { $0.id == selectedID }) else {
+            self.selectedID = items.first?.id
+            return
+        }
+    }
+
+    private func clearSearchOrClose() {
+        if searchQuery.isEmpty {
+            onClose()
+        } else {
+            searchQuery = ""
+            isSearchFocused = true
+        }
     }
 }
 
@@ -618,6 +717,7 @@ private struct ClipboardRow: View {
     let item: ClipboardItem
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
     let onTogglePin: () -> Void
+    let onEdit: () -> Void
 
     @State private var isHovered = false
 
@@ -647,6 +747,20 @@ private struct ClipboardRow: View {
             }
             Spacer(minLength: 0)
             SmartPasteMenu(item: item, onPaste: onPaste)
+            if item.hasImage && !item.isGIF {
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                        .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
+                }
+                .buttonStyle(.plain)
+                .help("Edit image")
+                .accessibilityLabel("Edit image")
+            }
             Button(action: onTogglePin) {
                 Image(systemName: item.isPinned ? "pin.fill" : "pin")
                     .font(.system(size: 15, weight: .semibold))

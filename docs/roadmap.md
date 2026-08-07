@@ -15,8 +15,10 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 ## Current v1 scope
 
 - SwiftUI + AppKit macOS app targeting macOS 14+.
-- Menu-bar-only lifecycle with a default `⌘⇧V` global hotkey.
+- Menu-bar-only lifecycle with configurable history (`⌘⇧V`) and GIF (`⌘G`) global hotkeys.
 - Plain text, RTF, PNG/TIFF/JPEG images, and file bookmarks/references.
+- Native area capture followed by a lightweight local annotation editor.
+- Native area screen recording converted locally to animated GIF and copied to the pasteboard/history.
 - Local JSON persistence under `~/Library/Application Support/clipboard/`.
 - SHA-256 deduplication, a configurable 10–200 item limit, and up to three pinned items.
 - Compact picker with scrolling, keyboard navigation, close/outside-click dismissal, and smooth entrance animation.
@@ -39,6 +41,7 @@ These are intentionally not committed to a release date:
 - Search and filtering for larger histories.
 - Launch-at-login as an opt-in setting.
 - Signed and notarized distribution.
+- Dedicated local GIF export action.
 - Optional App Store packaging, subject to the required sandbox and permission model.
 - Additional accessibility and target-app compatibility improvements.
 
