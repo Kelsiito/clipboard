@@ -26,6 +26,27 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Liquid Glass on macOS 26 with a material fallback on macOS 14–25.
 - Unit tests, public documentation, MIT license, and macOS CI workflow.
 
+## v1.1 — Core usability (planned)
+
+The next milestone is intentionally issue-driven. Each item has acceptance criteria on GitHub and should remain independently reviewable:
+
+- [Search-as-you-type](https://github.com/Kelsiito/clipboard/issues/3) — filter text and useful file metadata without changing persisted history.
+- [Delete one history item](https://github.com/Kelsiito/clipboard/issues/4) — remove only the app-owned item payload.
+- [Clear unpinned history](https://github.com/Kelsiito/clipboard/issues/5) — preserve pinned items and original files.
+- [Ignore next copy](https://github.com/Kelsiito/clipboard/issues/6) — skip exactly one eligible pasteboard snapshot in memory.
+- [Numbered picker shortcuts](https://github.com/Kelsiito/clipboard/issues/7) — keep `⌘1`–`⌘9` local to the focused picker.
+- [Opt-in Launch at Login](https://github.com/Kelsiito/clipboard/issues/8) — use Apple's login-item API with an off-by-default setting.
+
+Milestone: [v1.1 — Core usability](https://github.com/Kelsiito/clipboard/milestone/1).
+
+## Distribution and documentation track
+
+These tasks are independent from feature implementation and do not block v1.1 coding:
+
+- [Signed/notarized DMG and Homebrew Cask](https://github.com/Kelsiito/clipboard/issues/9) — blocked until a Developer ID identity and notarization credentials are available.
+- [Sanitized README demo media](https://github.com/Kelsiito/clipboard/issues/10) — use synthetic content only; no private desktop screenshots.
+- [GitHub Discussions](https://github.com/Kelsiito/clipboard/discussions) — enabled for questions and early product feedback.
+
 ## Explicit non-goals
 
 - Cloud sync or remote clipboard storage.
@@ -35,11 +56,14 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 
 ## Next candidates
 
-These are intentionally not committed to a release date:
+These follow v1.1 and are intentionally not committed to a release date:
 
-- Per-item deletion.
-- Search and filtering for larger histories.
-- Launch-at-login as an opt-in setting.
+- Ignore applications and pause history.
+- Retention/auto-delete controls.
+- Favorites or snippets, kept simpler than a general template manager.
+- Quick Look and expanded preview.
+- Clipboard Stack / sequential paste.
+- Local OCR for image retrieval.
 - Signed and notarized distribution.
 - Dedicated local GIF export action.
 - Optional App Store packaging, subject to the required sandbox and permission model.

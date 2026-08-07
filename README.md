@@ -2,11 +2,17 @@
 
 [![CI](https://github.com/Kelsiito/clipboard/actions/workflows/macos.yml/badge.svg)](https://github.com/Kelsiito/clipboard/actions/workflows/macos.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+<p align="center">
+  <img src="clipboard/Assets.xcassets/AppIcon.appiconset/icon-1024.png" alt="clipboard app icon" width="128">
+</p>
+
+<p align="center"><strong>Fast, native, open-source clipboard history for macOS.</strong><br>Everything stays on your Mac.</p>
+
 `clipboard` is a small, local-first clipboard history app for macOS. It lives in the menu bar and opens a compact Windows+V-style picker with `⌘⇧V`.
 
 The project is source-first and intentionally simple: SwiftUI + AppKit, Apple frameworks only, no cloud, analytics, accounts, backend, or external runtime dependencies.
 
-> Status: public v1 implementation. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store.
+> Status: public v1 implementation. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
 
 ## Features
 
@@ -129,7 +135,7 @@ clipboard/                       App target
   SettingsView.swift             Settings UI and Liquid Glass helpers
   ScreenshotCapture.swift        Native area-capture process and temporary-file lifecycle
   AnnotationEditor.swift         Screenshot markup UI and PNG rendering
-  ScreenGIFRecorder.swift         Native screen recording and local GIF export
+  ScreenGIFRecorder.swift        Native screen recording and local GIF export
 clipboardTests/                  XCTest coverage for core behavior
 docs/                            Roadmap and implementation history
 .github/workflows/               macOS test/build CI
@@ -155,10 +161,20 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
 - Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
-- The current project does not provide cloud sync, search, per-item deletion, launch-at-login, signing, notarization, or App Store packaging.
+- The current project does not provide cloud sync, search, per-item deletion, launch-at-login, signing, notarization, or App Store packaging. Search, deletion, privacy, keyboard, and launch-at-login work is tracked in the [v1.1 milestone](https://github.com/Kelsiito/clipboard/milestone/1).
 - Builds from source are currently unsigned and should be treated as development builds.
 
 The planned follow-up work is tracked in [docs/roadmap.md](docs/roadmap.md).
+
+## Roadmap and community
+
+- [v1.1 Core usability milestone](https://github.com/Kelsiito/clipboard/milestone/1)
+- [GitHub Discussions](https://github.com/Kelsiito/clipboard/discussions) for questions and product feedback
+- [Issues](https://github.com/Kelsiito/clipboard/issues) for reproducible bugs and focused proposals
+- [Contributing guide](CONTRIBUTING.md) for local development and pull requests
+- [Release checklist](docs/release.md) for DMG signing, notarization, and Homebrew follow-up
+- [Distribution issue](https://github.com/Kelsiito/clipboard/issues/9) for the signed DMG/Homebrew track
+- [README demo-media issue](https://github.com/Kelsiito/clipboard/issues/10) for a future synthetic GIF or screenshot
 
 ## Contributing
 

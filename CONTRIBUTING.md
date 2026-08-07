@@ -6,6 +6,8 @@ Thanks for your interest in `clipboard`. Small, focused pull requests are welcom
 
 - Read the [README](README.md) and [roadmap](docs/roadmap.md).
 - Check existing issues and pull requests before opening a duplicate.
+- Check the [v1.1 milestone](https://github.com/Kelsiito/clipboard/milestone/1) before proposing duplicate roadmap work.
+- Use [Discussions](https://github.com/Kelsiito/clipboard/discussions) for questions, product feedback, and early design discussion.
 - Do not include real clipboard history, private text, personal files, credentials, or sensitive screenshots in an issue or pull request.
 - Keep the project local-first. Do not add cloud sync, telemetry, analytics, authentication, or third-party services without a separate design discussion.
 
@@ -75,6 +77,8 @@ Use a concise title that describes the change. The description should include:
 - known limitations or follow-up work.
 
 Keep unrelated formatting churn out of the pull request. A maintainer may ask for a smaller patch if a change mixes unrelated concerns.
+
+For release or distribution changes, read [docs/release.md](docs/release.md). Do not commit signing identities, notarization credentials, certificates, provisioning material, or private test data.
 
 ## Commit messages
 

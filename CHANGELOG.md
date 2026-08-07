@@ -27,3 +27,10 @@ This file records user-visible changes. The project does not publish versioned b
 - Source builds are unsigned and not notarized.
 - Apps that expose only a window-level accessibility element cannot provide an exact caret coordinate; the picker uses a deterministic area fallback.
 - No cloud sync, search, launch-at-login, per-item deletion, or App Store package is included.
+
+### Repository and distribution
+
+- Added a public `v1.1 — Core usability` GitHub milestone with acceptance-tested issues.
+- Enabled GitHub Discussions for questions and product feedback.
+- Added a release checklist covering signed/notarized DMG and Homebrew Cask preparation.
+- No binary release has been published yet; source builds remain unsigned.
