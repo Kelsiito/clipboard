@@ -16,6 +16,8 @@
 
 The project is source-first and intentionally simple: SwiftUI + AppKit, Apple frameworks only, no cloud, analytics, accounts, backend, or external runtime dependencies.
 
+Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.app/)
+
 > Status: public v1 implementation. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
 
 ## Features
