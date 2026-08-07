@@ -6,7 +6,7 @@
 
 The project is source-first and intentionally simple: SwiftUI + AppKit, Apple frameworks only, no cloud, analytics, accounts, backend, or external runtime dependencies.
 
-> Status: public v1 implementation. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store.
+> Status: public implementation. The repository builds locally. Tagged releases can provide ad hoc signed Apple Silicon builds, but the app is not Developer ID signed, notarized, or distributed through the Mac App Store.
 
 ## Features
 
@@ -54,6 +54,12 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 ```
 
 The local Debug build is unsigned and not notarized. macOS may show a trust warning when launching a build compiled on another Mac; build and run it from Xcode or approve it in System Settings as appropriate for your environment.
+
+## Release archives
+
+Maintainers can publish an Apple Silicon release archive by pushing a semantic version tag such as `v2.0.0`. The release workflow runs the tests, builds the app in Release configuration, applies an ad hoc signature, and uploads both a ZIP archive and its SHA-256 checksum to GitHub Releases.
+
+Release archives are not notarized by Apple. macOS may show a trust warning when opening them. Users who prefer not to run an unnotarized binary should build the app from source in Xcode.
 
 ## Usage
 

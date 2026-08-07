@@ -1,0 +1,88 @@
+name: macOS Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # Liquid Glass symbols are available only when compiling with the macOS 26 SDK.
+    runs-on: macos-26
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must use the vMAJOR.MINOR.PATCH format." >&2
+            exit 1
+          fi
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Run tests
+        run: xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform=macOS' test
+
+      - name: Build release app
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          xcodebuild \
+            -project clipboard.xcodeproj \
+            -scheme clipboard \
+            -configuration Release \
+            -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath "${RUNNER_TEMP}/clipboard-derived-data" \
+            MARKETING_VERSION="${version}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package app
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          app_path="${RUNNER_TEMP}/clipboard-derived-data/Build/Products/Release/clipboard.app"
+          asset_name="clipboard-${version}-macOS-arm64.zip"
+          dist_dir="${RUNNER_TEMP}/clipboard-dist"
+
+          codesign --force --deep --sign - "${app_path}"
+          codesign --verify --deep --strict "${app_path}"
+
+          mkdir -p "${dist_dir}"
+          ditto -c -k --keepParent "${app_path}" "${dist_dir}/${asset_name}"
+          (
+            cd "${dist_dir}"
+            shasum -a 256 "${asset_name}" > "${asset_name}.sha256"
+          )
+
+          cat > "${dist_dir}/release-notes.md" <<EOF
+          Automated Apple Silicon build of clipboard ${version} for macOS 14 or newer.
+
+          This app is ad hoc signed and is not notarized by Apple. macOS may show a trust warning when opening it. Users who prefer not to run an unnotarized binary should build the app from source in Xcode.
+          EOF
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          asset_name="clipboard-${version}-macOS-arm64.zip"
+          dist_dir="${RUNNER_TEMP}/clipboard-dist"
+
+          gh release create "${GITHUB_REF_NAME}" \
+            "${dist_dir}/${asset_name}" \
+            "${dist_dir}/${asset_name}.sha256" \
+            --verify-tag \
+            --title "clipboard ${version}" \
+            --notes-file "${dist_dir}/release-notes.md"

@@ -1,6 +1,6 @@
 # Changelog
 
-This file records user-visible changes. The project does not publish versioned binary releases yet.
+This file records user-visible changes. Tagged releases can include ad hoc signed Apple Silicon builds, but the project does not publish Developer ID signed or notarized binaries.
 
 ## Unreleased
 
@@ -9,6 +9,7 @@ This file records user-visible changes. The project does not publish versioned b
 - Public open-source documentation in English.
 - Contributor, security, CI, and issue-reporting guidance.
 - macOS test/build workflow for pushes and pull requests.
+- Tag-driven workflow for ad hoc signed Apple Silicon release archives and checksums.
 
 ### Current feature set
 
