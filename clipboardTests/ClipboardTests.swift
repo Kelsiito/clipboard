@@ -1,4 +1,5 @@
 import Carbon.HIToolbox
+import AppKit
 import XCTest
 @testable import clipboard
 
@@ -128,6 +129,62 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(item.matchesSearch("documents"))
         XCTAssertTrue(item.matchesSearch("pdf"))
         XCTAssertFalse(item.matchesSearch("presentation"))
+    }
+
+    func testClipboardItemSearchMatchesPersistedOCRText() {
+        let item = ClipboardItem(
+            fingerprint: "ocr-search",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "public.png",
+            ocrText: "Quarterly revenue forecast",
+            files: []
+        )
+
+        XCTAssertTrue(item.matchesSearch("quarterly"))
+        XCTAssertTrue(item.matchesSearch("REVENUE"))
+        XCTAssertFalse(item.matchesSearch("invoice"))
+    }
+
+    func testLegacyItemDecodesWithoutOCRText() throws {
+        let item = ClipboardItem(
+            fingerprint: "legacy-ocr",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "public.png",
+            files: []
+        )
+        let encoded = try JSONEncoder().encode(item)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "ocrText")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(ClipboardItem.self, from: legacyData)
+        XCTAssertNil(decoded.ocrText)
+    }
+
+    func testLocalOCRRecognizesSyntheticTextImage() throws {
+        let size = NSSize(width: 900, height: 180)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 48, weight: .bold),
+            .foregroundColor: NSColor.black
+        ]
+        NSString(string: "Clipboard OCR").draw(at: NSPoint(x: 30, y: 55), withAttributes: attributes)
+        image.unlockFocus()
+
+        let tiffData = try XCTUnwrap(image.tiffRepresentation)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: tiffData))
+        let pngData = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        let recognized = try XCTUnwrap(LocalOCRService.recognize(imageData: pngData))
+
+        XCTAssertTrue(recognized.localizedCaseInsensitiveContains("clipboard"))
+        XCTAssertTrue(recognized.localizedCaseInsensitiveContains("ocr"))
     }
 
     @MainActor

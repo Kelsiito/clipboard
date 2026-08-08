@@ -20,6 +20,7 @@ This file records user-visible changes. The project currently publishes source r
 - Clipboard Stack capture and sequential paste controls for ordered form and data entry.
 - Optional, unset-by-default hotkeys for starting a Clipboard Stack and pasting its next item.
 - Native Quick Look previews for copied text, images, animated GIFs, and local file references.
+- Local, asynchronous OCR indexing for copied static images and screenshots.
 
 ### Current feature set
 
@@ -30,6 +31,7 @@ This file records user-visible changes. The project currently publishes source r
 - Accessibility-aware caret positioning and automatic paste with manual fallback.
 - GIF capture with direct clipboard/history placement and manual stop/cancel controls.
 - Quick Look previews use temporary app-owned copies for image/text payloads and never alter original files.
+- OCR text is persisted as local search metadata and never leaves the Mac.
 
 ### Known limitations
 

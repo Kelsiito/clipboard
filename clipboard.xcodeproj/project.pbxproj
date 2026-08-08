@@ -22,6 +22,7 @@
 		A10000000000000000000010 /* AnnotationEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* AnnotationEditor.swift */; };
 		A10000000000000000000011 /* ScreenGIFRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ScreenGIFRecorder.swift */; };
 		A10000000000000000000012 /* QuickLookPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* QuickLookPreview.swift */; };
+		A10000000000000000000013 /* LocalOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* LocalOCRService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		A20000000000000000000010 /* AnnotationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationEditor.swift; sourceTree = "<group>"; };
 		A20000000000000000000011 /* ScreenGIFRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGIFRecorder.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* QuickLookPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLookPreview.swift; sourceTree = "<group>"; };
+		A20000000000000000000013 /* LocalOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalOCRService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +90,7 @@
 				A20000000000000000000010 /* AnnotationEditor.swift */,
 				A20000000000000000000011 /* ScreenGIFRecorder.swift */,
 				A20000000000000000000012 /* QuickLookPreview.swift */,
+				A20000000000000000000013 /* LocalOCRService.swift */,
 				A20000000000000000000009 /* Assets.xcassets */,
 			);
 			path = clipboard;
@@ -224,6 +227,7 @@
 				A10000000000000000000010 /* AnnotationEditor.swift in Sources */,
 				A10000000000000000000011 /* ScreenGIFRecorder.swift in Sources */,
 				A10000000000000000000012 /* QuickLookPreview.swift in Sources */,
+				A10000000000000000000013 /* LocalOCRService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

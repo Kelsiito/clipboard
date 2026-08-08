@@ -118,11 +118,12 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var richTextData: Data?
     var imageData: Data?
     var imageType: String?
+    var ocrText: String?
     var files: [StoredFileReference]
     var isPinned: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case id, createdAt, fingerprint, text, richTextData, imageData, imageType, files, isPinned
+        case id, createdAt, fingerprint, text, richTextData, imageData, imageType, ocrText, files, isPinned
     }
 
     var hasText: Bool { text?.isEmpty == false }
@@ -160,7 +161,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     /// Search-only projection. It is intentionally not persisted so filtering
     /// cannot change the stored history format or data.
     var searchableText: String {
-        var values = [text ?? "", preview, kindLabel]
+        var values = [text ?? "", ocrText ?? "", preview, kindLabel]
         values.append(contentsOf: files.flatMap { [$0.name, $0.path] })
         return values.joined(separator: "\n")
     }
@@ -179,6 +180,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         richTextData: Data?,
         imageData: Data?,
         imageType: String?,
+        ocrText: String? = nil,
         files: [StoredFileReference],
         isPinned: Bool = false
     ) {
@@ -189,6 +191,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         self.richTextData = richTextData
         self.imageData = imageData
         self.imageType = imageType
+        self.ocrText = ocrText
         self.files = files
         self.isPinned = isPinned
     }
@@ -202,6 +205,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         richTextData = try container.decodeIfPresent(Data.self, forKey: .richTextData)
         imageData = try container.decodeIfPresent(Data.self, forKey: .imageData)
         imageType = try container.decodeIfPresent(String.self, forKey: .imageType)
+        ocrText = try container.decodeIfPresent(String.self, forKey: .ocrText)
         files = try container.decode([StoredFileReference].self, forKey: .files)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
@@ -215,6 +219,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         try container.encodeIfPresent(richTextData, forKey: .richTextData)
         try container.encodeIfPresent(imageData, forKey: .imageData)
         try container.encodeIfPresent(imageType, forKey: .imageType)
+        try container.encodeIfPresent(ocrText, forKey: .ocrText)
         try container.encode(files, forKey: .files)
         try container.encode(isPinned, forKey: .isPinned)
     }
