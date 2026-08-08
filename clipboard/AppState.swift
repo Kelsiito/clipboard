@@ -57,6 +57,13 @@ enum ClipboardMaterial: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
+struct ClipboardApplication: Identifiable, Hashable {
+    let bundleIdentifier: String
+    let displayName: String
+
+    var id: String { bundleIdentifier }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     static let shared = AppState()
@@ -110,6 +117,24 @@ final class AppState: ObservableObject {
             store.setLimit(historyLimit)
         }
     }
+
+    @Published var retention: ClipboardRetention {
+        didSet {
+            UserDefaults.standard.set(retention.rawValue, forKey: Keys.retention)
+            store.setRetention(retention)
+        }
+    }
+
+    @Published var ignoredBundleIdentifiers: Set<String> = [] {
+        didSet {
+            UserDefaults.standard.set(Array(ignoredBundleIdentifiers).sorted(), forKey: Keys.ignoredBundleIdentifiers)
+            monitor.ignoredBundleIdentifiers = ignoredBundleIdentifiers
+            refreshAvailableApplications()
+        }
+    }
+
+    @Published private(set) var availableApplications: [ClipboardApplication] = []
+    @Published private(set) var isHistoryPaused = false
 
     @Published var appearance: ClipboardAppearance {
         didSet {
@@ -173,15 +198,24 @@ final class AppState: ObservableObject {
         static let hotKey = "clipboard.hotKey"
         static let gifHotKey = "clipboard.gifHotKey"
         static let historyLimit = "clipboard.historyLimit"
+        static let retention = "clipboard.retention"
+        static let ignoredBundleIdentifiers = "clipboard.ignoredBundleIdentifiers"
         static let appearance = "clipboard.appearance"
         static let material = "clipboard.material"
         static let launchAtLogin = "clipboard.launchAtLogin"
     }
 
     private init() {
-        store = ClipboardStore(limit: UserDefaults.standard.integer(forKey: Keys.historyLimit) == 0 ? 50 : UserDefaults.standard.integer(forKey: Keys.historyLimit))
+        let savedHistoryLimit = UserDefaults.standard.integer(forKey: Keys.historyLimit)
+        let savedRetention = UserDefaults.standard.string(forKey: Keys.retention)
+            .flatMap(ClipboardRetention.init(rawValue:)) ?? .never
+        store = ClipboardStore(
+            limit: savedHistoryLimit == 0 ? 50 : savedHistoryLimit,
+            retention: savedRetention
+        )
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
         let savedGIFHotKey = (UserDefaults.standard.data(forKey: Keys.gifHotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .gifDefault
+        let savedIgnoredBundleIdentifiers = Set(UserDefaults.standard.stringArray(forKey: Keys.ignoredBundleIdentifiers) ?? [])
         let savedAppearance = UserDefaults.standard.string(forKey: Keys.appearance)
             .flatMap(ClipboardAppearance.init(rawValue:)) ?? .system
         let savedMaterial = UserDefaults.standard.string(forKey: Keys.material)
@@ -191,6 +225,8 @@ final class AppState: ObservableObject {
         gifHotKey = savedGIFHotKey
         oldGIFHotKey = savedGIFHotKey
         historyLimit = store.limit
+        retention = savedRetention
+        ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
         appearance = savedAppearance
         material = savedMaterial
         launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -201,7 +237,8 @@ final class AppState: ObservableObject {
         gifHotKeyManager.onHotKey = { [weak self] in
             self?.toggleGIFRecording()
         }
-        monitor.onSnapshot = { [weak self] snapshot in
+        monitor.ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
+        monitor.onSnapshot = { [weak self] snapshot, _ in
             self?.store.ingest(snapshot)
         }
     }
@@ -209,6 +246,8 @@ final class AppState: ObservableObject {
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
+        refreshAvailableApplications()
+        monitor.ignoredBundleIdentifiers = ignoredBundleIdentifiers
         monitor.start()
         oldHotKey = hotKey
         oldGIFHotKey = gifHotKey
@@ -221,6 +260,7 @@ final class AppState: ObservableObject {
         accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.isAccessibilityTrusted = AXIsProcessTrusted()
+                self?.refreshPauseState()
             }
         }
     }
@@ -293,6 +333,7 @@ final class AppState: ObservableObject {
 
     func showSettings() {
         panelController.close()
+        refreshAvailableApplications()
 
         if settingsWindow == nil {
             let settingsSize = NSSize(width: 520, height: 500)
@@ -353,6 +394,65 @@ final class AppState: ObservableObject {
         statusMessage = removedCount == 0
             ? "No unpinned items to clear."
             : "Cleared \(removedCount) unpinned item\(removedCount == 1 ? "" : "s")."
+    }
+
+    func pauseHistory(for duration: ClipboardPauseDuration) {
+        monitor.pauseHistory(for: duration)
+        isHistoryPaused = true
+        statusMessage = "History capture paused."
+    }
+
+    func resumeHistory() {
+        monitor.resumeHistory()
+        isHistoryPaused = false
+        statusMessage = "History capture resumed."
+    }
+
+    func refreshPauseState() {
+        guard isHistoryPaused else { return }
+        if !monitor.isPaused {
+            isHistoryPaused = false
+            statusMessage = "History capture resumed."
+        }
+    }
+
+    func refreshAvailableApplications() {
+        let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
+        var applications = NSWorkspace.shared.runningApplications
+            .filter {
+                $0.processIdentifier != currentProcessIdentifier &&
+                $0.activationPolicy == .regular &&
+                $0.bundleIdentifier != nil
+            }
+            .compactMap { application -> ClipboardApplication? in
+                guard let bundleIdentifier = application.bundleIdentifier else { return nil }
+                return ClipboardApplication(
+                    bundleIdentifier: bundleIdentifier,
+                    displayName: application.localizedName ?? bundleIdentifier
+                )
+            }
+
+        let knownBundleIdentifiers = Set(applications.map(\.bundleIdentifier))
+        applications.append(contentsOf: ignoredBundleIdentifiers
+            .subtracting(knownBundleIdentifiers)
+            .map { ClipboardApplication(bundleIdentifier: $0, displayName: $0) })
+        availableApplications = applications.sorted {
+            $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
+        }
+    }
+
+    func isApplicationIgnored(_ bundleIdentifier: String) -> Bool {
+        ignoredBundleIdentifiers.contains(bundleIdentifier)
+    }
+
+    func setApplicationIgnored(_ bundleIdentifier: String, ignored: Bool) {
+        var updated = ignoredBundleIdentifiers
+        if ignored {
+            updated.insert(bundleIdentifier)
+        } else {
+            updated.remove(bundleIdentifier)
+        }
+        ignoredBundleIdentifiers = updated
     }
 
     func ignoreNextCopy() {

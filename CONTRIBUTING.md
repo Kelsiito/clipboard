@@ -53,6 +53,9 @@ For changes to the picker or settings, also run the relevant manual checks:
 - delete one item from its context menu and verify it stays deleted after restart;
 - clear unpinned history and verify pinned items remain;
 - choose `Ignore Next Copy`, copy synthetic content, and verify only that copy is skipped;
+- open Settings → Privacy, ignore a running test app, and verify copies from it are not stored;
+- pause history for 15 minutes, resume it, and verify paused copies are not stored;
+- choose a short retention period with synthetic old fixtures and verify unpinned items expire while pinned items remain;
 - enable and disable Launch at Login, then verify the setting survives relaunch;
 - verify close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Clear unpinned, Ignore Next Copy, Quit, and the menu-bar item;

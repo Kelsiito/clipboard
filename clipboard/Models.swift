@@ -11,6 +11,57 @@ enum ClipboardContentKind: String, Codable {
     case mixed
 }
 
+enum ClipboardRetention: String, CaseIterable, Codable, Hashable, Identifiable {
+    case never
+    case oneDay
+    case sevenDays
+    case thirtyDays
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .never: return "Never"
+        case .oneDay: return "1 day"
+        case .sevenDays: return "7 days"
+        case .thirtyDays: return "30 days"
+        }
+    }
+
+    var interval: TimeInterval? {
+        switch self {
+        case .never: return nil
+        case .oneDay: return 24 * 60 * 60
+        case .sevenDays: return 7 * 24 * 60 * 60
+        case .thirtyDays: return 30 * 24 * 60 * 60
+        }
+    }
+}
+
+enum ClipboardPauseDuration: String, CaseIterable, Hashable, Identifiable {
+    case fifteenMinutes
+    case oneHour
+    case untilResumed
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fifteenMinutes: return "15 minutes"
+        case .oneHour: return "1 hour"
+        case .untilResumed: return "Until resumed"
+        }
+    }
+
+    var interval: TimeInterval? {
+        switch self {
+        case .fifteenMinutes: return 15 * 60
+        case .oneHour: return 60 * 60
+        case .untilResumed: return nil
+        }
+    }
+}
+
 struct StoredFileReference: Codable, Hashable, Identifiable {
     let id: UUID
     let name: String

@@ -26,7 +26,7 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Liquid Glass on macOS 26 with a material fallback on macOS 14–25.
 - Unit tests, public documentation, MIT license, and macOS CI workflow.
 
-## v1.1 — Core usability (implemented locally)
+## v1.1 — Core usability (implemented and merged)
 
 This milestone is implemented in the current working tree. Each item remains independently reviewable through its GitHub issue:
 
@@ -38,6 +38,17 @@ This milestone is implemented in the current working tree. Each item remains ind
 - [Opt-in Launch at Login](https://github.com/Kelsiito/clipboard/issues/8) — use Apple's login-item API with an off-by-default setting.
 
 Milestone: [v1.1 — Core usability](https://github.com/Kelsiito/clipboard/milestone/1).
+
+## v1.2 — Privacy controls (implemented locally)
+
+The first v1.2 slice keeps capture local and gives users predictable ways to stop or limit it:
+
+- Ignore selected running applications; copies from those apps are not stored.
+- Pause capture for 15 minutes, 1 hour, or until manually resumed.
+- Automatically remove unpinned items older than 1, 7, or 30 days.
+- Preserve pinned items and original files during retention cleanup.
+
+The pause state is intentionally session-only and resets when the app restarts. Ignored application identifiers and retention settings persist locally in UserDefaults.
 
 ## Distribution and documentation track
 
@@ -52,14 +63,12 @@ These tasks are independent from feature implementation and do not block v1.1 co
 - Cloud sync or remote clipboard storage.
 - Accounts, authentication, analytics, telemetry, advertising, or a backend.
 - Copying file bytes into history or deleting original files.
-- App Store delivery, automatic login launch, or signed/notarized distribution in v1.
+- Signed/notarized distribution in the source-first v1 release.
 
 ## Next candidates
 
-These follow v1.1 and are intentionally not committed to a release date:
+These follow the v1.2 privacy slice and are intentionally not committed to a release date:
 
-- Ignore applications and pause history.
-- Retention/auto-delete controls.
 - Favorites or snippets, kept simpler than a general template manager.
 - Quick Look and expanded preview.
 - Clipboard Stack / sequential paste.

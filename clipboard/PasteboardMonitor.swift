@@ -4,11 +4,14 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class PasteboardMonitor {
-    var onSnapshot: ((ClipboardSnapshot) -> Void)?
+    var onSnapshot: ((ClipboardSnapshot, String?) -> Void)?
+    var ignoredBundleIdentifiers: Set<String> = []
 
     private var timer: Timer?
     private var lastChangeCount = NSPasteboard.general.changeCount
     private var suppressedUntil = Date.distantPast
+    private(set) var isPaused = false
+    private var pausedUntil: Date?
 
     private(set) var isIgnoringNextCopy = false
 
@@ -35,6 +38,21 @@ final class PasteboardMonitor {
         isIgnoringNextCopy = true
     }
 
+    func pauseHistory(for duration: ClipboardPauseDuration) {
+        isPaused = true
+        pausedUntil = duration.interval.map { Date().addingTimeInterval($0) }
+    }
+
+    func resumeHistory() {
+        isPaused = false
+        pausedUntil = nil
+    }
+
+    func shouldIgnore(bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return ignoredBundleIdentifiers.contains(bundleIdentifier)
+    }
+
     @discardableResult
     func consumeIgnoreNextCopy() -> Bool {
         guard isIgnoringNextCopy else { return false }
@@ -43,15 +61,24 @@ final class PasteboardMonitor {
     }
 
     private func poll() {
+        refreshPauseState()
         let pasteboard = NSPasteboard.general
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
         lastChangeCount = changeCount
 
         guard Date() >= suppressedUntil else { return }
+        guard !isPaused else { return }
+        let sourceBundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        guard !shouldIgnore(bundleIdentifier: sourceBundleIdentifier) else { return }
         guard let snapshot = makeSnapshot(from: pasteboard) else { return }
         guard !consumeIgnoreNextCopy() else { return }
-        onSnapshot?(snapshot)
+        onSnapshot?(snapshot, sourceBundleIdentifier)
+    }
+
+    private func refreshPauseState() {
+        guard isPaused, let pausedUntil, Date() >= pausedUntil else { return }
+        resumeHistory()
     }
 
     private func makeSnapshot(from pasteboard: NSPasteboard) -> ClipboardSnapshot? {
