@@ -38,7 +38,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
-- Settings window for both hotkeys, history limit, clearing all or unpinned history, opt-in Launch at Login, and Accessibility status.
+- Settings window for the history, GIF, and optional Clipboard Stack hotkeys, history limit, clearing all or unpinned history, opt-in Launch at Login, and Accessibility status.
 - `Ignore Next Copy` skips one eligible pasteboard snapshot without changing existing history.
 - Privacy controls for ignoring selected applications, pausing capture for 15 minutes, 1 hour, or until resumed, and automatically removing old unpinned items after 1, 7, or 30 days.
 - File bookmarks/references are stored locally; original files are never copied, moved, or deleted by the app.
@@ -65,7 +65,7 @@ In Xcode:
 1. Select the `clipboard` scheme and `My Mac` as the run destination.
 2. Build and run.
 3. Look for the clipboard icon in the menu bar. The app is an accessory/menu-bar app, so it is not expected to appear in the Dock.
-4. Open `Settings…` from the menu-bar item to configure both hotkeys and the history limit.
+4. Open `Settings…` from the menu-bar item to configure hotkeys and the history limit.
 
 The command-line equivalents are:
 
@@ -196,7 +196,7 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
 - Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
-- Clipboard Stack currently advances through the menu bar one item at a time; a dedicated stack hotkey and batch controls remain future work.
+- Clipboard Stack currently advances one item at a time; batch paste controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.
 
