@@ -33,6 +33,12 @@ struct ClipboardApp: App {
                 }
             }
 
+            Button {
+                appState.saveLatestGIF()
+            } label: {
+                Label("Save Latest GIF…", systemImage: "square.and.arrow.down")
+            }
+
             Divider()
 
             Button {

@@ -51,6 +51,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;
+- save the latest GIF from the menu bar and an individual GIF from its history row, including a filename without an extension, and verify the exported file is a valid `.gif` without duplicating history;
 - cancel a GIF recording and verify no history item or local file is created;
 - verify search-as-you-type, filtered arrow navigation, `Enter`, `Esc`, and `⌘1`–`⌘9` shortcuts;
 - delete one item from its context menu and verify it stays deleted after restart;

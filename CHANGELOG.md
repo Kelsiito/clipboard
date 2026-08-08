@@ -12,6 +12,7 @@ This file records user-visible changes. The project currently publishes source r
 - Native area capture and local image annotation with drawing, line, arrow, and rectangle tools.
 - Direct `Edit image` actions for image items in the history picker.
 - Local screen recording to animated GIF, copied directly to the pasteboard and history.
+- Native local GIF export from the menu bar and individual GIF history rows.
 - Search-as-you-type across text, content kind, and file metadata.
 - Individual item deletion, clear-unpinned history, and one-shot `Ignore Next Copy` privacy action.
 - Local picker shortcuts `⌘1`–`⌘9` for direct paste of visible results.
@@ -30,6 +31,7 @@ This file records user-visible changes. The project currently publishes source r
 - Compact keyboard-friendly picker with scrolling, smooth entrance animation, dismissal controls, and Liquid Glass on macOS 26.
 - Accessibility-aware caret positioning and automatic paste with manual fallback.
 - GIF capture with direct clipboard/history placement and manual stop/cancel controls.
+- GIF export uses the native save panel and never duplicates the history item.
 - Quick Look previews use temporary app-owned copies for image/text payloads and never alter original files.
 - OCR text is persisted as local search metadata and never leaves the Mac.
 

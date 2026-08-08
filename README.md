@@ -27,6 +27,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - Capture and annotate images from the menu-bar menu with the native macOS area selector.
 - Lightweight screenshot editor with freehand drawing, lines, arrows, rectangles, undo, and clear.
 - Record a selected screen area as an animated GIF and copy it directly to the pasteboard and history.
+- Save the latest GIF or any GIF history item to a local `.gif` file.
 - Persistent history for plain text, RTF data, PNG/TIFF/JPEG images, and copied file references.
 - Search-as-you-type across text, content kind, and file metadata.
 - SHA-256 fingerprints to avoid duplicate history entries.
@@ -85,7 +86,7 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
+Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. GIF rows expose a download button and `Save GIF…` context-menu action. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Save Latest GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
 
 ### Search and keyboard shortcuts
 
@@ -131,9 +132,9 @@ macOS may request Screen Recording permission the first time capture is used. Th
 2. Drag over an area with the clipboard selection overlay and release the pointer; recording starts immediately.
 3. Press the GIF hotkey again (`⌘G` by default) or choose `Stop GIF Recording` from the menu bar when finished. Use `Cancel GIF Recording` to discard it.
 4. The app converts the temporary video locally, places the GIF on the pasteboard, and adds it to history.
-5. Press `⌘V` in the target app.
+5. Press `⌘V` in the target app, or choose `Save Latest GIF…` from the menu bar to export the latest GIF locally. You can also save an individual GIF from its history-row download button or context menu.
 
-The GIF is converted at 10 fps, capped at 1280 px wide. The temporary video is removed after conversion or cancellation. Local GIF export uses a separate future action; this flow is optimized for immediate paste.
+The GIF is converted at 10 fps, capped at 1280 px wide. The temporary video is removed after conversion or cancellation. Export uses the native save panel, appends `.gif` when needed, and never creates a duplicate history item.
 
 ### Accessibility and positioning
 
@@ -204,7 +205,6 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - File bookmarks can become stale if the original file is moved, deleted, or made inaccessible.
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
-- Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
 - Clipboard Stack currently advances one item at a time; batch paste controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.

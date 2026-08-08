@@ -379,6 +379,7 @@ final class AppState: ObservableObject {
             onTogglePin: { [weak self] item in self?.togglePin(item) },
             onPreview: { [weak self] item in self?.preview(item) },
             onEdit: { [weak self] item in self?.editImage(item) },
+            onSaveGIF: { [weak self] item in self?.saveGIF(item) },
             onDelete: { [weak self] item in self?.deleteItem(item) }
         )
     }
@@ -833,6 +834,36 @@ final class AppState: ObservableObject {
         guard isRecordingGIF else { return }
         statusMessage = "Finishing GIF recording…"
         screenGIFRecorder.finish()
+    }
+
+    func saveLatestGIF() {
+        guard let item = store.items.first(where: { $0.isGIF }) else {
+            statusMessage = "No GIF is available to save."
+            return
+        }
+        saveGIF(item)
+    }
+
+    func saveGIF(_ item: ClipboardItem) {
+        guard item.isGIF, let data = item.imageData else {
+            statusMessage = "This item is not a GIF."
+            return
+        }
+
+        panelController.close()
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.gif]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = GIFFileExporter.defaultFilename()
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                let outputURL = try GIFFileExporter.write(data, to: url)
+                self?.statusMessage = "GIF saved to \(outputURL.lastPathComponent)."
+            } catch {
+                self?.statusMessage = "The GIF could not be saved."
+            }
+        }
     }
 
     private func copyGIFToClipboard(_ data: Data) {

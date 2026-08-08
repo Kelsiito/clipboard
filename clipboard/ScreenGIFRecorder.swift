@@ -158,6 +158,23 @@ enum GIFEncoder {
     }
 }
 
+enum GIFFileExporter {
+    static func defaultFilename(now: Date = Date()) -> String {
+        let formatter = ISO8601DateFormatter()
+        let timestamp = formatter.string(from: now).replacingOccurrences(of: ":", with: "-")
+        return "clipboard-\(timestamp).gif"
+    }
+
+    @discardableResult
+    static func write(_ data: Data, to url: URL) throws -> URL {
+        let outputURL = url.pathExtension.lowercased() == "gif"
+            ? url
+            : url.appendingPathExtension("gif")
+        try data.write(to: outputURL, options: .atomic)
+        return outputURL
+    }
+}
+
 private final class ScreenRegionSelectionView: NSView {
     var onSelection: ((NSRect) -> Void)?
     var onCancel: (() -> Void)?

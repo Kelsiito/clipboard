@@ -19,6 +19,7 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Plain text, RTF, PNG/TIFF/JPEG images, and file bookmarks/references.
 - Native area capture followed by a lightweight local annotation editor.
 - Native area screen recording converted locally to animated GIF and copied to the pasteboard/history.
+- The latest GIF or an individual GIF history item can be exported to a local `.gif` file.
 - Local JSON persistence under `~/Library/Application Support/clipboard/`.
 - SHA-256 deduplication, a configurable 10–200 item limit, and up to three pinned items.
 - Compact picker with scrolling, keyboard navigation, close/outside-click dismissal, and smooth entrance animation.
@@ -84,7 +85,6 @@ These follow the v1.3 Clipboard Stack slice and are intentionally not committed 
 
 - Favorites or snippets, kept simpler than a general template manager.
 - Signed and notarized distribution.
-- Dedicated local GIF export action.
 - Optional App Store packaging, subject to the required sandbox and permission model.
 - Additional accessibility and target-app compatibility improvements.
 

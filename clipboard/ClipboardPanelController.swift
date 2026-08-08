@@ -72,6 +72,7 @@ final class ClipboardPanelController {
         onTogglePin: @escaping (ClipboardItem) -> Void,
         onPreview: @escaping (ClipboardItem) -> Void,
         onEdit: @escaping (ClipboardItem) -> Void,
+        onSaveGIF: @escaping (ClipboardItem) -> Void,
         onDelete: @escaping (ClipboardItem) -> Void
     ) {
         // Resolve the caret before creating or activating any clipboard UI so focus
@@ -90,6 +91,7 @@ final class ClipboardPanelController {
                 onTogglePin: onTogglePin,
                 onPreview: onPreview,
                 onEdit: onEdit,
+                onSaveGIF: onSaveGIF,
                 onDelete: onDelete,
                 onClose: { [weak self] in self?.close() }
             )
@@ -490,6 +492,7 @@ struct ClipboardPanelView: View {
     let onTogglePin: (ClipboardItem) -> Void
     let onPreview: (ClipboardItem) -> Void
     let onEdit: (ClipboardItem) -> Void
+    let onSaveGIF: (ClipboardItem) -> Void
     let onDelete: (ClipboardItem) -> Void
     let onClose: () -> Void
 
@@ -539,12 +542,16 @@ struct ClipboardPanelView: View {
                         onPaste: onPaste,
                         onTogglePin: { onTogglePin(item) },
                         onPreview: { onPreview(item) },
-                        onEdit: { onEdit(item) }
+                        onEdit: { onEdit(item) },
+                        onSaveGIF: { onSaveGIF(item) }
                     )
                         .contextMenu {
                             Button(item.isPinned ? "Unpin" : "Pin") { onTogglePin(item) }
                             if item.hasImage && !item.isGIF {
                                 Button("Edit image") { onEdit(item) }
+                            }
+                            if item.isGIF {
+                                Button("Save GIF…") { onSaveGIF(item) }
                             }
                             Button("Quick Look") { onPreview(item) }
                             Divider()
@@ -746,6 +753,7 @@ private struct ClipboardRow: View {
     let onTogglePin: () -> Void
     let onPreview: () -> Void
     let onEdit: () -> Void
+    let onSaveGIF: () -> Void
 
     @State private var isHovered = false
 
@@ -787,6 +795,20 @@ private struct ClipboardRow: View {
             .buttonStyle(.plain)
             .help("Quick Look")
             .accessibilityLabel("Quick Look")
+            if item.isGIF {
+                Button(action: onSaveGIF) {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                        .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
+                }
+                .buttonStyle(.plain)
+                .help("Save GIF")
+                .accessibilityLabel("Save GIF")
+            }
             if item.hasImage && !item.isGIF {
                 Button(action: onEdit) {
                     Image(systemName: "pencil")

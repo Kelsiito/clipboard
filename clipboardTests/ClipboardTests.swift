@@ -405,6 +405,18 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(payload.imageType, "com.compuserve.gif")
     }
 
+    func testGIFFileExporterWritesDataAndAddsExtension() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let chosenURL = directory.appendingPathComponent("recording")
+        let data = Data([1, 2, 3])
+
+        let outputURL = try GIFFileExporter.write(data, to: chosenURL)
+
+        XCTAssertEqual(outputURL.pathExtension, "gif")
+        XCTAssertEqual(try Data(contentsOf: outputURL), data)
+    }
+
     @MainActor
     func testFileBookmarkPersistsAndResolves() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
