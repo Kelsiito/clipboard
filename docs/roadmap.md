@@ -26,9 +26,9 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Liquid Glass on macOS 26 with a material fallback on macOS 14–25.
 - Unit tests, public documentation, MIT license, and macOS CI workflow.
 
-## v1.1 — Core usability (planned)
+## v1.1 — Core usability (implemented locally)
 
-The next milestone is intentionally issue-driven. Each item has acceptance criteria on GitHub and should remain independently reviewable:
+This milestone is implemented in the current working tree. Each item remains independently reviewable through its GitHub issue:
 
 - [Search-as-you-type](https://github.com/Kelsiito/clipboard/issues/3) — filter text and useful file metadata without changing persisted history.
 - [Delete one history item](https://github.com/Kelsiito/clipboard/issues/4) — remove only the app-owned item payload.

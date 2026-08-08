@@ -36,6 +36,14 @@ struct ClipboardApp: App {
             Divider()
 
             Button {
+                appState.ignoreNextCopy()
+            } label: {
+                Label("Ignore Next Copy", systemImage: "eye.slash")
+            }
+
+            Divider()
+
+            Button {
                 appState.showSettings()
             } label: {
                 Label("Settings…", systemImage: "gearshape")

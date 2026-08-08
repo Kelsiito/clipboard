@@ -2,6 +2,7 @@ import ApplicationServices
 import AppKit
 import Carbon.HIToolbox
 import Foundation
+import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -124,6 +125,26 @@ final class AppState: ObservableObject {
         }
     }
 
+    @Published var launchAtLogin: Bool {
+        didSet {
+            guard !isUpdatingLaunchAtLogin else { return }
+            let requestedValue = launchAtLogin
+            do {
+                if requestedValue {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                UserDefaults.standard.set(requestedValue, forKey: Keys.launchAtLogin)
+            } catch {
+                isUpdatingLaunchAtLogin = true
+                launchAtLogin = !requestedValue
+                isUpdatingLaunchAtLogin = false
+                statusMessage = "Launch at login could not be changed."
+            }
+        }
+    }
+
     @Published private(set) var isAccessibilityTrusted = AXIsProcessTrusted()
     @Published private(set) var isRecordingHotKey = false
     @Published private(set) var isCapturingScreenshot = false
@@ -144,6 +165,7 @@ final class AppState: ObservableObject {
     private var recordingMonitor: Any?
     private var accessibilityTimer: Timer?
     private var hasStarted = false
+    private var isUpdatingLaunchAtLogin = false
     private var oldHotKey: HotKeyConfiguration
     private var oldGIFHotKey: HotKeyConfiguration
     private var recordingHotKeyTarget: HotKeyTarget?
@@ -153,6 +175,7 @@ final class AppState: ObservableObject {
         static let historyLimit = "clipboard.historyLimit"
         static let appearance = "clipboard.appearance"
         static let material = "clipboard.material"
+        static let launchAtLogin = "clipboard.launchAtLogin"
     }
 
     private init() {
@@ -170,6 +193,7 @@ final class AppState: ObservableObject {
         historyLimit = store.limit
         appearance = savedAppearance
         material = savedMaterial
+        launchAtLogin = SMAppService.mainApp.status == .enabled
 
         hotKeyManager.onHotKey = { [weak self] in
             self?.showPanel()
@@ -231,7 +255,8 @@ final class AppState: ObservableObject {
             material: material,
             onPaste: { [weak self] item, format in self?.paste(item, format: format) },
             onTogglePin: { [weak self] item in self?.togglePin(item) },
-            onEdit: { [weak self] item in self?.editImage(item) }
+            onEdit: { [weak self] item in self?.editImage(item) },
+            onDelete: { [weak self] item in self?.deleteItem(item) }
         )
     }
 
@@ -259,6 +284,11 @@ final class AppState: ObservableObject {
             }
             return
         }
+    }
+
+    func deleteItem(_ item: ClipboardItem) {
+        guard store.remove(item.id) else { return }
+        statusMessage = "Item deleted."
     }
 
     func showSettings() {
@@ -316,6 +346,18 @@ final class AppState: ObservableObject {
     func clearHistory() {
         store.clear()
         statusMessage = "History cleared."
+    }
+
+    func clearUnpinnedHistory() {
+        let removedCount = store.clearUnpinned()
+        statusMessage = removedCount == 0
+            ? "No unpinned items to clear."
+            : "Cleared \(removedCount) unpinned item\(removedCount == 1 ? "" : "s")."
+    }
+
+    func ignoreNextCopy() {
+        monitor.ignoreNextCopy()
+        statusMessage = "Next clipboard copy will be ignored."
     }
 
     func beginRecordingHotKey() {

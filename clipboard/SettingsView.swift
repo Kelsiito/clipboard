@@ -33,6 +33,7 @@ extension View {
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var showingClearConfirmation = false
+    @State private var showingClearUnpinnedConfirmation = false
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -83,6 +84,29 @@ struct SettingsView: View {
                                 .controlSize(.small)
                                 Spacer()
                             }
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            HStack {
+                                Button("Clear unpinned", role: .destructive) {
+                                    showingClearUnpinnedConfirmation = true
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+
+                settingsSection("Startup") {
+                    settingsCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle("Launch at login", isOn: $appState.launchAtLogin)
+                            Text("Start clipboard automatically after you sign in.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -154,6 +178,12 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Removes text, images, and references stored by the app.")
+        }
+        .confirmationDialog("Clear unpinned history?", isPresented: $showingClearUnpinnedConfirmation, titleVisibility: .visible) {
+            Button("Clear unpinned", role: .destructive) { appState.clearUnpinnedHistory() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Pinned items and original files remain untouched.")
         }
     }
 
