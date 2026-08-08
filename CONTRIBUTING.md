@@ -46,6 +46,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - open the picker with the default and a changed history hotkey;
 - start and stop GIF recording with the default and a changed GIF hotkey;
 - configure, use, and clear the optional Clipboard Stack start and paste-next hotkeys;
+- open Quick Look from the row eye button and context menu for text, images, animated GIFs, and local files;
 - capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;
@@ -59,6 +60,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - choose a short retention period with synthetic old fixtures and verify unpinned items expire while pinned items remain;
 - start a Clipboard Stack, copy synthetic fields in order, finish it, and paste each queued item into a test field;
 - clear or cancel a stack and verify no extra history payload is created;
+- close a Quick Look preview and verify it does not add history or modify the original file;
 - enable and disable Launch at Login, then verify the setting survives relaunch;
 - verify close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Clear unpinned, Ignore Next Copy, Quit, and the menu-bar item;

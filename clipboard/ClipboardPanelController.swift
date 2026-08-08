@@ -70,6 +70,7 @@ final class ClipboardPanelController {
         material: ClipboardMaterial,
         onPaste: @escaping (ClipboardItem, ClipboardPasteFormat) -> Void,
         onTogglePin: @escaping (ClipboardItem) -> Void,
+        onPreview: @escaping (ClipboardItem) -> Void,
         onEdit: @escaping (ClipboardItem) -> Void,
         onDelete: @escaping (ClipboardItem) -> Void
     ) {
@@ -87,6 +88,7 @@ final class ClipboardPanelController {
                 material: material,
                 onPaste: onPaste,
                 onTogglePin: onTogglePin,
+                onPreview: onPreview,
                 onEdit: onEdit,
                 onDelete: onDelete,
                 onClose: { [weak self] in self?.close() }
@@ -486,6 +488,7 @@ struct ClipboardPanelView: View {
     let material: ClipboardMaterial
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
     let onTogglePin: (ClipboardItem) -> Void
+    let onPreview: (ClipboardItem) -> Void
     let onEdit: (ClipboardItem) -> Void
     let onDelete: (ClipboardItem) -> Void
     let onClose: () -> Void
@@ -535,6 +538,7 @@ struct ClipboardPanelView: View {
                         item: item,
                         onPaste: onPaste,
                         onTogglePin: { onTogglePin(item) },
+                        onPreview: { onPreview(item) },
                         onEdit: { onEdit(item) }
                     )
                         .contextMenu {
@@ -542,6 +546,7 @@ struct ClipboardPanelView: View {
                             if item.hasImage && !item.isGIF {
                                 Button("Edit image") { onEdit(item) }
                             }
+                            Button("Quick Look") { onPreview(item) }
                             Divider()
                             Button("Paste") { onPaste(item, .original) }
                             Button("Delete", role: .destructive) { onDelete(item) }
@@ -739,6 +744,7 @@ private struct ClipboardRow: View {
     let item: ClipboardItem
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
     let onTogglePin: () -> Void
+    let onPreview: () -> Void
     let onEdit: () -> Void
 
     @State private var isHovered = false
@@ -769,6 +775,18 @@ private struct ClipboardRow: View {
             }
             Spacer(minLength: 0)
             SmartPasteMenu(item: item, onPaste: onPaste)
+            Button(action: onPreview) {
+                Image(systemName: "eye")
+                    .font(.system(size: 15, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+                    .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
+            }
+            .buttonStyle(.plain)
+            .help("Quick Look")
+            .accessibilityLabel("Quick Look")
             if item.hasImage && !item.isGIF {
                 Button(action: onEdit) {
                     Image(systemName: "pencil")

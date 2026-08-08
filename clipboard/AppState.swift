@@ -232,6 +232,7 @@ final class AppState: ObservableObject {
     private let panelController = ClipboardPanelController()
     private let screenshotCaptureService = ScreenshotCaptureService()
     private let screenGIFRecorder = ScreenGIFRecorder()
+    private let quickLookPreview = ClipboardQuickLookPreview()
     private let annotationEditorController = AnnotationEditorController()
     private var settingsWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
@@ -348,6 +349,7 @@ final class AppState: ObservableObject {
         stackNextHotKeyManager.stop()
         screenGIFRecorder.cancel()
         annotationEditorController.close()
+        quickLookPreview.close()
         isCapturingStack = false
         clipboardStack.removeAll()
         accessibilityTimer?.invalidate()
@@ -356,6 +358,7 @@ final class AppState: ObservableObject {
     }
 
     func showPanel() {
+        quickLookPreview.close()
         let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
         targetApplication = panelController.targetApplication(
             excluding: currentProcessIdentifier
@@ -374,6 +377,7 @@ final class AppState: ObservableObject {
             material: material,
             onPaste: { [weak self] item, format in self?.paste(item, format: format) },
             onTogglePin: { [weak self] item in self?.togglePin(item) },
+            onPreview: { [weak self] item in self?.preview(item) },
             onEdit: { [weak self] item in self?.editImage(item) },
             onDelete: { [weak self] item in self?.deleteItem(item) }
         )
@@ -393,6 +397,15 @@ final class AppState: ObservableObject {
             material: material,
             onCopy: { [weak self] data in self?.copyAnnotatedScreenshot(data) }
         )
+    }
+
+    func preview(_ item: ClipboardItem) {
+        panelController.close()
+        guard quickLookPreview.show(item: item) else {
+            statusMessage = "No preview is available for this item."
+            return
+        }
+        statusMessage = nil
     }
 
     func togglePin(_ item: ClipboardItem) {

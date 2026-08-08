@@ -19,6 +19,7 @@ This file records user-visible changes. The project currently publishes source r
 - Privacy controls for ignored applications, temporary capture pauses, and age-based retention of unpinned history.
 - Clipboard Stack capture and sequential paste controls for ordered form and data entry.
 - Optional, unset-by-default hotkeys for starting a Clipboard Stack and pasting its next item.
+- Native Quick Look previews for copied text, images, animated GIFs, and local file references.
 
 ### Current feature set
 
@@ -28,6 +29,7 @@ This file records user-visible changes. The project currently publishes source r
 - Compact keyboard-friendly picker with scrolling, smooth entrance animation, dismissal controls, and Liquid Glass on macOS 26.
 - Accessibility-aware caret positioning and automatic paste with manual fallback.
 - GIF capture with direct clipboard/history placement and manual stop/cancel controls.
+- Quick Look previews use temporary app-owned copies for image/text payloads and never alter original files.
 
 ### Known limitations
 
