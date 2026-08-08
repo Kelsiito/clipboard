@@ -39,7 +39,7 @@ This milestone is implemented in the current working tree. Each item remains ind
 
 Milestone: [v1.1 — Core usability](https://github.com/Kelsiito/clipboard/milestone/1).
 
-## v1.2 — Privacy controls (implemented locally)
+## v1.2 — Privacy controls (implemented and merged)
 
 The first v1.2 slice keeps capture local and gives users predictable ways to stop or limit it:
 
@@ -49,6 +49,17 @@ The first v1.2 slice keeps capture local and gives users predictable ways to sto
 - Preserve pinned items and original files during retention cleanup.
 
 The pause state is intentionally session-only and resets when the app restarts. Ignored application identifiers and retention settings persist locally in UserDefaults.
+
+## v1.3 — Power (implemented locally)
+
+The first v1.3 slice is Clipboard Stack / sequential paste:
+
+- Start a session-only stack from the menu bar.
+- Capture subsequent eligible copies in their original order while keeping normal history capture active.
+- Finish the stack and paste one queued item at a time into the focused destination.
+- Keep the manual `⌘V` fallback when Accessibility is unavailable.
+
+The next v1.3 candidates remain Quick Look/expanded preview and local OCR for image retrieval.
 
 ## Distribution and documentation track
 
@@ -67,11 +78,10 @@ These tasks are independent from feature implementation and do not block v1.1 co
 
 ## Next candidates
 
-These follow the v1.2 privacy slice and are intentionally not committed to a release date:
+These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
 - Favorites or snippets, kept simpler than a general template manager.
 - Quick Look and expanded preview.
-- Clipboard Stack / sequential paste.
 - Local OCR for image retrieval.
 - Signed and notarized distribution.
 - Dedicated local GIF export action.

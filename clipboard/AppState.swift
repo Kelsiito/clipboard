@@ -135,6 +135,8 @@ final class AppState: ObservableObject {
 
     @Published private(set) var availableApplications: [ClipboardApplication] = []
     @Published private(set) var isHistoryPaused = false
+    @Published private(set) var isCapturingStack = false
+    @Published private(set) var clipboardStack = ClipboardStack()
 
     @Published var appearance: ClipboardAppearance {
         didSet {
@@ -239,7 +241,12 @@ final class AppState: ObservableObject {
         }
         monitor.ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
         monitor.onSnapshot = { [weak self] snapshot, _ in
-            self?.store.ingest(snapshot)
+            guard let self else { return }
+            self.store.ingest(snapshot)
+            guard self.isCapturingStack,
+                  let item = self.store.items.first(where: { $0.fingerprint == snapshot.fingerprint })
+            else { return }
+            self.clipboardStack.append(item.id)
         }
     }
 
@@ -271,6 +278,8 @@ final class AppState: ObservableObject {
         gifHotKeyManager.stop()
         screenGIFRecorder.cancel()
         annotationEditorController.close()
+        isCapturingStack = false
+        clipboardStack.removeAll()
         accessibilityTimer?.invalidate()
         accessibilityTimer = nil
         stopRecordingHotKey()
@@ -453,6 +462,73 @@ final class AppState: ObservableObject {
             updated.remove(bundleIdentifier)
         }
         ignoredBundleIdentifiers = updated
+    }
+
+    func startClipboardStack() {
+        clipboardStack.removeAll()
+        targetApplication = nil
+        isCapturingStack = true
+        statusMessage = "Stack capture started. Copy the items you want to paste in sequence."
+    }
+
+    func finishClipboardStack() {
+        isCapturingStack = false
+        if clipboardStack.isEmpty {
+            statusMessage = "Stack capture finished without items."
+        } else {
+            let suffix = clipboardStack.count == 1 ? "" : "s"
+            statusMessage = "Stack ready: \(clipboardStack.count) item\(suffix) queued."
+        }
+    }
+
+    func cancelClipboardStack() {
+        isCapturingStack = false
+        clipboardStack.removeAll()
+        targetApplication = nil
+        statusMessage = "Stack cleared."
+    }
+
+    func clearClipboardStack() {
+        clipboardStack.removeAll()
+        targetApplication = nil
+        statusMessage = "Stack cleared."
+    }
+
+    func pasteNextStackItem() {
+        guard !isCapturingStack else {
+            statusMessage = "Finish stack capture before pasting."
+            return
+        }
+
+        while let firstID = clipboardStack.itemIDs.first,
+              store.item(withID: firstID) == nil {
+            _ = clipboardStack.removeFirst()
+        }
+
+        guard let firstID = clipboardStack.itemIDs.first,
+              let item = store.item(withID: firstID)
+        else {
+            targetApplication = nil
+            statusMessage = "The clipboard stack is empty."
+            return
+        }
+
+        let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
+        targetApplication = panelController.targetApplication(excluding: currentProcessIdentifier) ?? targetApplication
+        let canPasteAutomatically = AXIsProcessTrusted() && targetApplication != nil
+        guard paste(item, targetApplicationOverride: targetApplication) else { return }
+        _ = clipboardStack.removeFirst()
+
+        if clipboardStack.isEmpty {
+            targetApplication = nil
+            statusMessage = canPasteAutomatically
+                ? "Last stack item pasted."
+                : "Last stack item is on the clipboard. Press ⌘V to paste."
+        } else {
+            statusMessage = canPasteAutomatically
+                ? "Stack item pasted. (\(clipboardStack.count)) remaining."
+                : "Stack item ready on the clipboard. Press ⌘V, then paste the next item."
+        }
     }
 
     func ignoreNextCopy() {
@@ -640,10 +716,15 @@ final class AppState: ObservableObject {
         statusMessage = "GIF copied to the clipboard. Press ⌘V to paste."
     }
 
-    private func paste(_ item: ClipboardItem, format: ClipboardPasteFormat = .original) {
+    @discardableResult
+    private func paste(
+        _ item: ClipboardItem,
+        format: ClipboardPasteFormat = .original,
+        targetApplicationOverride: NSRunningApplication? = nil
+    ) -> Bool {
         guard let payload = ClipboardPasteFormatter.payload(for: item, format: format) else {
             statusMessage = "\(format.title) is unavailable for this item."
-            return
+            return false
         }
 
         panelController.close()
@@ -659,15 +740,18 @@ final class AppState: ObservableObject {
         let urls = payload.fileURLs
         if !urls.isEmpty { pasteboard.writeObjects(urls as [NSURL]) }
 
-        guard let targetApplication else { return }
+        guard let destination = targetApplicationOverride ?? targetApplication else {
+            statusMessage = "Item restored to the clipboard. Press ⌘V to paste."
+            return true
+        }
         guard AXIsProcessTrusted() else {
             statusMessage = "Enable Accessibility for automatic paste."
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
-            return
+            return true
         }
 
-        targetApplication.activate(options: [])
+        destination.activate(options: [])
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             let source = CGEventSource(stateID: .hidSystemState)
             let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true)
@@ -677,5 +761,6 @@ final class AppState: ObservableObject {
             keyDown?.post(tap: .cghidEventTap)
             keyUp?.post(tap: .cghidEventTap)
         }
+        return true
     }
 }

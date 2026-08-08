@@ -62,6 +62,27 @@ enum ClipboardPauseDuration: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
+struct ClipboardStack: Equatable {
+    private(set) var itemIDs: [UUID] = []
+
+    var count: Int { itemIDs.count }
+    var isEmpty: Bool { itemIDs.isEmpty }
+
+    mutating func append(_ id: UUID) {
+        itemIDs.append(id)
+    }
+
+    @discardableResult
+    mutating func removeFirst() -> UUID? {
+        guard !itemIDs.isEmpty else { return nil }
+        return itemIDs.removeFirst()
+    }
+
+    mutating func removeAll() {
+        itemIDs.removeAll()
+    }
+}
+
 struct StoredFileReference: Codable, Hashable, Identifiable {
     let id: UUID
     let name: String

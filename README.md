@@ -18,7 +18,7 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 
 Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.app/)
 
-> Status: public v1.1 core-usability milestone merged; v1.2 privacy controls are in progress. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
+> Status: public v1.2 privacy-controls milestone merged; v1.3 Clipboard Stack is in progress. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
 
 ## Features
 
@@ -34,6 +34,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - Up to three pinned items, always shown first.
 - Compact picker with three visible rows, scrolling for older items, search filtering, arrow-key navigation, `Enter` to paste, and `Esc` to close.
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
+- Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
@@ -82,7 +83,7 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Ignore Next Copy`, `Pause History`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
+Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
 
 ### Search and keyboard shortcuts
 
@@ -93,6 +94,16 @@ Use the pin button or an item's context menu to pin/unpin it. Image rows also ex
 - Use `Ignore Next Copy` when the next clipboard change should not enter history.
 - Use `Pause History` from the menu bar or Settings when capture should stop temporarily.
 - Choose ignored applications and a retention period in Settings. Ignored-app rules apply while those apps are the active source; retention removes only unpinned history.
+
+### Clipboard Stack
+
+1. Choose `Start Clipboard Stack` from the menu bar.
+2. Copy each field in the order you want to paste it. Normal history capture continues as usual.
+3. Choose `Finish Stack Capture` when the sequence is ready.
+4. Focus the destination field and choose `Paste Next Stack Item` for each field. The selected item is restored to the pasteboard and pasted automatically when Accessibility is available; otherwise press `⌘V` manually before advancing.
+5. Choose `Clear Clipboard Stack` to discard the remaining sequence.
+
+The stack is session-only and is not persisted as a second copy of history. Each queued entry points to the existing local history item.
 
 ### Capture and annotate
 
@@ -185,6 +196,7 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
 - Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
+- Clipboard Stack currently advances through the menu bar one item at a time; a dedicated stack hotkey and batch controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.
 

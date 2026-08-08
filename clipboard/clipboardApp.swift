@@ -61,6 +61,42 @@ struct ClipboardApp: App {
 
             Divider()
 
+            if appState.isCapturingStack {
+                Button {
+                    appState.finishClipboardStack()
+                } label: {
+                    Label("Finish Stack Capture (\(appState.clipboardStack.count))", systemImage: "checkmark.circle")
+                }
+
+                Button {
+                    appState.cancelClipboardStack()
+                } label: {
+                    Label("Cancel Stack Capture", systemImage: "xmark.circle")
+                }
+            } else {
+                Button {
+                    appState.startClipboardStack()
+                } label: {
+                    Label("Start Clipboard Stack", systemImage: "square.stack.3d.up")
+                }
+            }
+
+            if !appState.isCapturingStack && !appState.clipboardStack.isEmpty {
+                Button {
+                    appState.pasteNextStackItem()
+                } label: {
+                    Label("Paste Next Stack Item", systemImage: "arrow.down.doc")
+                }
+
+                Button {
+                    appState.clearClipboardStack()
+                } label: {
+                    Label("Clear Clipboard Stack", systemImage: "trash")
+                }
+            }
+
+            Divider()
+
             Button {
                 appState.showSettings()
             } label: {
