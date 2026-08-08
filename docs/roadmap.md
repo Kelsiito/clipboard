@@ -58,8 +58,9 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Capture subsequent eligible copies in their original order while keeping normal history capture active.
 - Finish the stack and paste one queued item at a time into the focused destination.
 - Keep the manual `⌘V` fallback when Accessibility is unavailable.
+- Open native Quick Look previews for copied text, images, animated GIFs, and existing local file references.
 
-The next v1.3 candidates remain Quick Look/expanded preview and local OCR for image retrieval.
+Local OCR for image retrieval remains the next v1.3 candidate.
 
 ## Distribution and documentation track
 
@@ -81,7 +82,6 @@ These tasks are independent from feature implementation and do not block v1.1 co
 These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
 - Favorites or snippets, kept simpler than a general template manager.
-- Quick Look and expanded preview.
 - Local OCR for image retrieval.
 - Signed and notarized distribution.
 - Dedicated local GIF export action.

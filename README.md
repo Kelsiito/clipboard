@@ -18,7 +18,7 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 
 Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.app/)
 
-> Status: public v1.2 privacy-controls milestone merged; v1.3 Clipboard Stack is in progress. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
+> Status: public v1.2 privacy-controls milestone merged; v1.3 Clipboard Stack and Quick Look previews are implemented locally. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
 
 ## Features
 
@@ -35,6 +35,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - Compact picker with three visible rows, scrolling for older items, search filtering, arrow-key navigation, `Enter` to paste, and `Esc` to close.
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
 - Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
+- Quick Look previews text, images, GIFs, and existing local file references without changing the stored history or original files.
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
@@ -91,6 +92,7 @@ Use the pin button or an item's context menu to pin/unpin it. Image rows also ex
 - Use `↑`/`↓` to navigate filtered results and `Enter` to paste.
 - Use `⌘1`–`⌘9` to paste the corresponding visible result directly.
 - Right-click an item for `Delete`, `Pin`/`Unpin`, `Paste`, and image editing actions.
+- Click the eye button or choose `Quick Look` from an item's context menu to open the native preview. File previews use the original local reference; image and text previews use temporary app-owned copies that are removed when the preview closes.
 - Use `Ignore Next Copy` when the next clipboard change should not enter history.
 - Use `Pause History` from the menu bar or Settings when capture should stop temporarily.
 - Choose ignored applications and a retention period in Settings. Ignored-app rules apply while those apps are the active source; retention removes only unpinned history.
@@ -104,6 +106,10 @@ Use the pin button or an item's context menu to pin/unpin it. Image rows also ex
 5. Choose `Clear Clipboard Stack` to discard the remaining sequence.
 
 The stack is session-only and is not persisted as a second copy of history. Each queued entry points to the existing local history item. Optional hotkeys for `Start Clipboard Stack` and `Paste Next Stack Item` can be configured in Settings; neither has a default, and both can be cleared.
+
+### Quick Look
+
+Quick Look is available from the eye button on every picker row or from the item's context menu. It previews copied text, images, animated GIFs, and files in the native macOS Quick Look panel. Previewing never copies or deletes original files and does not create another history item.
 
 ### Capture and annotate
 

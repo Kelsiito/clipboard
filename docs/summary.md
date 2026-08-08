@@ -16,6 +16,7 @@
 - Privacy controls can ignore selected applications, pause capture for 15 minutes, 1 hour, or until resumed, and expire unpinned history after a chosen retention period.
 - Clipboard Stack can capture subsequent copies in order and restore them one at a time for sequential paste.
 - Clipboard Stack start and paste-next hotkeys are optional, persisted only after the user configures them, and can be cleared from Settings.
+- Quick Look is available from each picker row and context menu for text, images, animated GIFs, and existing local file references.
 - The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
 ## Storage and privacy
@@ -39,6 +40,7 @@
 - `Models.swift`: Codable clipboard, file-reference, hotkey, retention, and pause models.
 - `GlobalHotKey.swift`: Carbon global hotkey registration.
 - `ClipboardPanelController.swift`: floating picker, placement, animations, keyboard navigation, and rows.
+- `QuickLookPreview.swift`: native Quick Look data source with temporary preview copies and cleanup.
 - `SettingsView.swift`: settings UI and Liquid Glass/material compatibility helpers.
 
 ## Positioning behavior
@@ -72,6 +74,7 @@ The XCTest suite covers persistence, images, file bookmarks, deduplication, limi
 - Settings above other apps.
 - Ignored application capture, pause/resume, and retention cleanup with pinned items.
 - Clipboard Stack capture, finish/cancel controls, ordered consumption, and manual paste fallback.
+- Quick Look from the row eye button and context menu for text, images, GIFs, and files; verify the panel closes and temporary previews are removed.
 - Accessibility granted and denied.
 - Standard text-editor caret positioning.
 - Window-area fallback for apps that do not expose a caret.

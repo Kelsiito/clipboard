@@ -21,6 +21,7 @@
 		A1000000000000000000000F /* ScreenshotCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* ScreenshotCapture.swift */; };
 		A10000000000000000000010 /* AnnotationEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* AnnotationEditor.swift */; };
 		A10000000000000000000011 /* ScreenGIFRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ScreenGIFRecorder.swift */; };
+		A10000000000000000000012 /* QuickLookPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* QuickLookPreview.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 		A2000000000000000000000F /* ScreenshotCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCapture.swift; sourceTree = "<group>"; };
 		A20000000000000000000010 /* AnnotationEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationEditor.swift; sourceTree = "<group>"; };
 		A20000000000000000000011 /* ScreenGIFRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGIFRecorder.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* QuickLookPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLookPreview.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +87,7 @@
 				A2000000000000000000000F /* ScreenshotCapture.swift */,
 				A20000000000000000000010 /* AnnotationEditor.swift */,
 				A20000000000000000000011 /* ScreenGIFRecorder.swift */,
+				A20000000000000000000012 /* QuickLookPreview.swift */,
 				A20000000000000000000009 /* Assets.xcassets */,
 			);
 			path = clipboard;
@@ -220,6 +223,7 @@
 				A1000000000000000000000F /* ScreenshotCapture.swift in Sources */,
 				A10000000000000000000010 /* AnnotationEditor.swift in Sources */,
 				A10000000000000000000011 /* ScreenGIFRecorder.swift in Sources */,
+				A10000000000000000000012 /* QuickLookPreview.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
