@@ -225,6 +225,35 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     }
 }
 
+struct ClipboardSnippet: Codable, Equatable, Identifiable {
+    let id: UUID
+    var createdAt: Date
+    var title: String
+    var text: String
+
+    init(
+        id: UUID = UUID(),
+        createdAt: Date = Date(),
+        title: String,
+        text: String
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.title = title
+        self.text = text
+    }
+
+    static func suggestedTitle(for text: String) -> String {
+        let firstLine = text
+            .split(maxSplits: 1, whereSeparator: { $0.isNewline })
+            .first
+            .map(String.init) ?? "Favorite"
+        let trimmed = firstLine.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Favorite" }
+        return String(trimmed.prefix(48))
+    }
+}
+
 private extension String {
     var searchNormalized: String {
         folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)

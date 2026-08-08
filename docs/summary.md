@@ -18,6 +18,7 @@
 - Clipboard Stack start and paste-next hotkeys are optional, persisted only after the user configures them, and can be cleared from Settings.
 - Quick Look is available from each picker row and context menu for text, images, animated GIFs, and existing local file references.
 - GIFs can be exported through the menu bar or an individual GIF history row using the native save panel; export does not duplicate history.
+- Text history items can be saved as persistent Favorites/Snippets, then searched, edited, pasted, or deleted independently of history cleanup.
 - Static images are OCR-indexed asynchronously with Apple's Vision framework; recognized text is persisted locally and participates in search.
 - The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
@@ -79,6 +80,7 @@ The XCTest suite covers persistence, images, file bookmarks, deduplication, limi
 - Clipboard Stack capture, finish/cancel controls, ordered consumption, and manual paste fallback.
 - Quick Look from the row eye button and context menu for text, images, GIFs, and files; verify the panel closes and temporary previews are removed.
 - Save the latest GIF from the menu bar and an individual GIF from its row; verify `.gif` extension handling, file contents, and no duplicate history item.
+- Save a text history item as a Favorite, create a new Favorite, edit its title/content, search it, paste it, delete it, and verify it survives history clearing and restart.
 - Accessibility granted and denied.
 - Standard text-editor caret positioning.
 - Window-area fallback for apps that do not expose a caret.

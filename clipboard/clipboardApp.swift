@@ -104,6 +104,14 @@ struct ClipboardApp: App {
             Divider()
 
             Button {
+                appState.showFavorites()
+            } label: {
+                Label("Favorites…", systemImage: "star")
+            }
+
+            Divider()
+
+            Button {
                 appState.showSettings()
             } label: {
                 Label("Settings…", systemImage: "gearshape")

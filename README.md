@@ -33,6 +33,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - SHA-256 fingerprints to avoid duplicate history entries.
 - 50 stored items by default, configurable from 10 to 200.
 - Up to three pinned items, always shown first.
+- Persistent text Favorites/Snippets with editable titles and content, independent of history cleanup.
 - Compact picker with three visible rows, scrolling for older items, search filtering, arrow-key navigation, `Enter` to paste, and `Esc` to close.
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
 - Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
@@ -86,7 +87,7 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. GIF rows expose a download button and `Save GIF…` context-menu action. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Save Latest GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
+Use the pin button or an item's context menu to pin/unpin it. Text items can be saved as persistent Favorites from their context menu. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. GIF rows expose a download button and `Save GIF…` context-menu action. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Save Latest GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Favorites…`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
 
 ### Search and keyboard shortcuts
 
@@ -114,6 +115,10 @@ The stack is session-only and is not persisted as a second copy of history. Each
 Quick Look is available from the eye button on every picker row or from the item's context menu. It previews copied text, images, animated GIFs, and files in the native macOS Quick Look panel. Previewing never copies or deletes original files and does not create another history item.
 
 Static images are processed locally with Apple's Vision framework. OCR runs asynchronously after capture, so the image is available immediately; existing images without OCR metadata are indexed after the history loads. Once indexing finishes, search-as-you-type also matches recognized text. OCR data is stored only in the local history file and is never uploaded.
+
+### Favorites and snippets
+
+Choose `Favorites…` from the menu-bar menu to open the persistent text snippets window. Save a text history item with `Save as Favorite…`, or create one with `+`. Favorites support search, editable titles and content, paste, and deletion. They are stored in `~/Library/Application Support/clipboard/snippets.json` and are not affected by the history item limit, retention cleanup, or `Clear History`. Images and files remain history items and are not converted into snippets.
 
 ### Capture and annotate
 
@@ -196,7 +201,7 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 git diff --check
 ```
 
-The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
+The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, Favorites/Snippets persistence and deduplication, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
 
 ## Known limitations
 
@@ -205,6 +210,7 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - File bookmarks can become stale if the original file is moved, deleted, or made inaccessible.
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
+- Favorites/Snippets currently store text only; images and files remain in the regular history.
 - Clipboard Stack currently advances one item at a time; batch paste controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.

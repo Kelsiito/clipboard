@@ -53,6 +53,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - verify the GIF appears in history and pastes with `⌘V`;
 - save the latest GIF from the menu bar and an individual GIF from its history row, including a filename without an extension, and verify the exported file is a valid `.gif` without duplicating history;
 - cancel a GIF recording and verify no history item or local file is created;
+- save a text history item as a Favorite, create and edit a Favorite, paste it, search it, delete it, and verify it survives history cleanup and restart;
 - verify search-as-you-type, filtered arrow navigation, `Enter`, `Esc`, and `⌘1`–`⌘9` shortcuts;
 - delete one item from its context menu and verify it stays deleted after restart;
 - clear unpinned history and verify pinned items remain;

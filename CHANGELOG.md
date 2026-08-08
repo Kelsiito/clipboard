@@ -22,6 +22,7 @@ This file records user-visible changes. The project currently publishes source r
 - Optional, unset-by-default hotkeys for starting a Clipboard Stack and pasting its next item.
 - Native Quick Look previews for copied text, images, animated GIFs, and local file references.
 - Local, asynchronous OCR indexing for copied static images and screenshots.
+- Persistent text Favorites/Snippets with search, editable titles/content, paste, and deletion.
 
 ### Current feature set
 
@@ -34,6 +35,7 @@ This file records user-visible changes. The project currently publishes source r
 - GIF export uses the native save panel and never duplicates the history item.
 - Quick Look previews use temporary app-owned copies for image/text payloads and never alter original files.
 - OCR text is persisted as local search metadata and never leaves the Mac.
+- Favorites/Snippets are persisted separately from history and are not removed by history retention or clearing.
 
 ### Known limitations
 

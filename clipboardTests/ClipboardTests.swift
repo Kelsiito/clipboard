@@ -36,6 +36,39 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testSnippetStorePersistsUpdatesAndDeletes() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SnippetStore(directoryURL: directory)
+
+        let snippet = try XCTUnwrap(store.add(text: "  curl https://example.com  "))
+        XCTAssertEqual(snippet.title, "curl https://example.com")
+        XCTAssertEqual(store.snippets.count, 1)
+
+        var updated = snippet
+        updated.title = "Health check"
+        updated.text = "curl https://example.com/health"
+        XCTAssertTrue(store.update(updated))
+
+        let reloaded = SnippetStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.snippets.first?.title, "Health check")
+        XCTAssertEqual(reloaded.snippets.first?.text, "curl https://example.com/health")
+        XCTAssertTrue(reloaded.remove(snippet.id))
+        XCTAssertTrue(reloaded.snippets.isEmpty)
+    }
+
+    @MainActor
+    func testSnippetStoreRejectsEmptyTextAndDeduplicates() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SnippetStore(directoryURL: directory)
+
+        XCTAssertNil(store.add(text: "   \n"))
+        let first = store.add(title: "First", text: "same text")
+        let duplicate = store.add(title: "Second", text: "same text")
+        XCTAssertEqual(first?.id, duplicate?.id)
+        XCTAssertEqual(store.snippets.count, 1)
+    }
+
+    @MainActor
     func testStorePinsMaximumThreeItemsAndPersistsOrder() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = ClipboardStore(directoryURL: directory)

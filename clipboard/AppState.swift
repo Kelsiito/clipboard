@@ -186,6 +186,7 @@ final class AppState: ObservableObject {
         didSet {
             UserDefaults.standard.set(appearance.rawValue, forKey: Keys.appearance)
             applyAppearance(appearance, to: settingsWindow)
+            applyAppearance(appearance, to: favoritesWindow)
             panelController.setAppearance(appearance)
         }
     }
@@ -223,6 +224,7 @@ final class AppState: ObservableObject {
     @Published var statusMessage: String?
 
     let store: ClipboardStore
+    let snippetStore: SnippetStore
 
     private let monitor = PasteboardMonitor()
     private let hotKeyManager = GlobalHotKeyManager(identifier: 1)
@@ -235,6 +237,7 @@ final class AppState: ObservableObject {
     private let quickLookPreview = ClipboardQuickLookPreview()
     private let annotationEditorController = AnnotationEditorController()
     private var settingsWindow: NSWindow?
+    private var favoritesWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
     private var recordingMonitor: Any?
     private var accessibilityTimer: Timer?
@@ -266,6 +269,7 @@ final class AppState: ObservableObject {
             limit: savedHistoryLimit == 0 ? 50 : savedHistoryLimit,
             retention: savedRetention
         )
+        snippetStore = SnippetStore()
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
         let savedGIFHotKey = (UserDefaults.standard.data(forKey: Keys.gifHotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .gifDefault
         let savedStackStartHotKey = UserDefaults.standard.data(forKey: Keys.stackStartHotKey)
@@ -350,6 +354,7 @@ final class AppState: ObservableObject {
         screenGIFRecorder.cancel()
         annotationEditorController.close()
         quickLookPreview.close()
+        favoritesWindow?.orderOut(nil)
         isCapturingStack = false
         clipboardStack.removeAll()
         accessibilityTimer?.invalidate()
@@ -380,6 +385,7 @@ final class AppState: ObservableObject {
             onPreview: { [weak self] item in self?.preview(item) },
             onEdit: { [weak self] item in self?.editImage(item) },
             onSaveGIF: { [weak self] item in self?.saveGIF(item) },
+            onSaveFavorite: { [weak self] item in self?.saveAsFavorite(item) },
             onDelete: { [weak self] item in self?.deleteItem(item) }
         )
     }
@@ -422,6 +428,64 @@ final class AppState: ObservableObject {
     func deleteItem(_ item: ClipboardItem) {
         guard store.remove(item.id) else { return }
         statusMessage = "Item deleted."
+    }
+
+    func saveAsFavorite(_ item: ClipboardItem) {
+        guard let text = item.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            statusMessage = "Only text items can be saved as favorites."
+            return
+        }
+        _ = snippetStore.add(text: text)
+        statusMessage = "Favorite saved."
+    }
+
+    func showFavorites() {
+        panelController.close()
+        targetApplication = panelController.targetApplication(
+            excluding: NSRunningApplication.current.processIdentifier
+        )
+
+        if favoritesWindow == nil {
+            let favoritesSize = NSSize(width: 520, height: 430)
+            let window = NSWindow(
+                contentRect: NSRect(origin: .zero, size: favoritesSize),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.appearance = appearance.nsAppearance
+            window.setContentSize(favoritesSize)
+            window.minSize = NSSize(width: 420, height: 320)
+            window.title = "Favorites — clipboard"
+            window.titlebarAppearsTransparent = false
+            window.titleVisibility = .visible
+            window.isOpaque = true
+            window.backgroundColor = .windowBackgroundColor
+            window.isReleasedWhenClosed = false
+            window.level = .floating
+            window.hidesOnDeactivate = false
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+            let rootView = FavoritesView(
+                store: snippetStore,
+                material: material,
+                onPaste: { [weak self] snippet in self?.pasteSnippet(snippet) },
+                onClose: { [weak self] in self?.favoritesWindow?.orderOut(nil) }
+            )
+            let hostingController = NSHostingController(rootView: rootView)
+            hostingController.view.frame = NSRect(origin: .zero, size: favoritesSize)
+            hostingController.view.autoresizingMask = [.width, .height]
+            window.contentViewController = hostingController
+
+            window.center()
+            favoritesWindow = window
+        }
+
+        applyAppearance(appearance, to: favoritesWindow)
+        favoritesWindow?.level = .floating
+        NSApp.activate(ignoringOtherApps: true)
+        favoritesWindow?.orderFrontRegardless()
+        favoritesWindow?.makeKey()
     }
 
     func showSettings() {
@@ -864,6 +928,19 @@ final class AppState: ObservableObject {
                 self?.statusMessage = "The GIF could not be saved."
             }
         }
+    }
+
+    private func pasteSnippet(_ snippet: ClipboardSnippet) {
+        favoritesWindow?.orderOut(nil)
+        let item = ClipboardItem(
+            fingerprint: "snippet-\(snippet.id.uuidString)",
+            text: snippet.text,
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        _ = paste(item, targetApplicationOverride: targetApplication)
     }
 
     private func copyGIFToClipboard(_ data: Data) {

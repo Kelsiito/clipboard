@@ -20,6 +20,7 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Native area capture followed by a lightweight local annotation editor.
 - Native area screen recording converted locally to animated GIF and copied to the pasteboard/history.
 - The latest GIF or an individual GIF history item can be exported to a local `.gif` file.
+- Persistent text Favorites/Snippets with search, editing, paste, and deletion.
 - Local JSON persistence under `~/Library/Application Support/clipboard/`.
 - SHA-256 deduplication, a configurable 10–200 item limit, and up to three pinned items.
 - Compact picker with scrolling, keyboard navigation, close/outside-click dismissal, and smooth entrance animation.
@@ -61,8 +62,8 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Keep the manual `⌘V` fallback when Accessibility is unavailable.
 - Open native Quick Look previews for copied text, images, animated GIFs, and existing local file references.
 - Index text from copied static images locally with Apple Vision so screenshots can be searched.
-
-The remaining v1.3 candidate is a simple favorites/snippets layer.
+- Export the latest GIF or an individual GIF history item to a local `.gif` file.
+- Save text history items as persistent, editable Favorites/Snippets.
 
 ## Distribution and documentation track
 
@@ -83,7 +84,6 @@ These tasks are independent from feature implementation and do not block v1.1 co
 
 These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
-- Favorites or snippets, kept simpler than a general template manager.
 - Signed and notarized distribution.
 - Optional App Store packaging, subject to the required sandbox and permission model.
 - Additional accessibility and target-app compatibility improvements.
