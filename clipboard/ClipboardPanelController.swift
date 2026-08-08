@@ -72,6 +72,7 @@ final class ClipboardPanelController {
         onTogglePin: @escaping (ClipboardItem) -> Void,
         onPreview: @escaping (ClipboardItem) -> Void,
         onEdit: @escaping (ClipboardItem) -> Void,
+        onExtractText: @escaping (ClipboardItem) -> Void,
         onSaveGIF: @escaping (ClipboardItem) -> Void,
         onSaveFavorite: @escaping (ClipboardItem) -> Void,
         onDelete: @escaping (ClipboardItem) -> Void
@@ -92,6 +93,7 @@ final class ClipboardPanelController {
                 onTogglePin: onTogglePin,
                 onPreview: onPreview,
                 onEdit: onEdit,
+                onExtractText: onExtractText,
                 onSaveGIF: onSaveGIF,
                 onSaveFavorite: onSaveFavorite,
                 onDelete: onDelete,
@@ -494,6 +496,7 @@ struct ClipboardPanelView: View {
     let onTogglePin: (ClipboardItem) -> Void
     let onPreview: (ClipboardItem) -> Void
     let onEdit: (ClipboardItem) -> Void
+    let onExtractText: (ClipboardItem) -> Void
     let onSaveGIF: (ClipboardItem) -> Void
     let onSaveFavorite: (ClipboardItem) -> Void
     let onDelete: (ClipboardItem) -> Void
@@ -546,6 +549,7 @@ struct ClipboardPanelView: View {
                         onTogglePin: { onTogglePin(item) },
                         onPreview: { onPreview(item) },
                         onEdit: { onEdit(item) },
+                        onExtractText: { onExtractText(item) },
                         onSaveGIF: { onSaveGIF(item) }
                     )
                         .contextMenu {
@@ -553,8 +557,9 @@ struct ClipboardPanelView: View {
                             if item.hasText {
                                 Button("Save as Favorite…") { onSaveFavorite(item) }
                             }
-                            if item.hasImage && !item.isGIF {
+                            if item.canExtractText {
                                 Button("Edit image") { onEdit(item) }
+                                Button("Extract Text & Copy") { onExtractText(item) }
                             }
                             if item.isGIF {
                                 Button("Save GIF…") { onSaveGIF(item) }
@@ -759,6 +764,7 @@ private struct ClipboardRow: View {
     let onTogglePin: () -> Void
     let onPreview: () -> Void
     let onEdit: () -> Void
+    let onExtractText: () -> Void
     let onSaveGIF: () -> Void
 
     @State private var isHovered = false
@@ -788,7 +794,11 @@ private struct ClipboardRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            SmartPasteMenu(item: item, onPaste: onPaste)
+            SmartPasteMenu(
+                item: item,
+                onPaste: onPaste,
+                onExtractText: onExtractText
+            )
             Button(action: onPreview) {
                 Image(systemName: "eye")
                     .font(.system(size: 15, weight: .semibold))
@@ -865,6 +875,7 @@ private struct ClipboardRow: View {
 private struct SmartPasteMenu: View {
     let item: ClipboardItem
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
+    let onExtractText: () -> Void
 
     var body: some View {
         Menu {
@@ -875,6 +886,14 @@ private struct SmartPasteMenu: View {
                     } label: {
                         Label(format.title, systemImage: format.systemImage)
                     }
+                }
+            }
+            if item.canExtractText {
+                Divider()
+                Button {
+                    onExtractText()
+                } label: {
+                    Label("Extract Text & Copy", systemImage: "doc.text.magnifyingglass")
                 }
             }
         } label: {

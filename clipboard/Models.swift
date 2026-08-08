@@ -129,6 +129,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var hasText: Bool { text?.isEmpty == false }
     var hasImage: Bool { imageData != nil }
     var isGIF: Bool { imageType == UTType.gif.identifier }
+    var canExtractText: Bool { hasImage && !isGIF }
     var hasFiles: Bool { !files.isEmpty }
     var isEmpty: Bool { !hasText && !hasImage && !hasFiles }
 

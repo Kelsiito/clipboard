@@ -38,7 +38,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
 - Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
 - Quick Look previews text, images, GIFs, and existing local file references without changing the stored history or original files.
-- Local OCR indexes text in copied static images and screenshots for private, offline search.
+- Local OCR indexes text in copied static images and screenshots for private, offline search; `Extract Text & Copy` copies recognized text back to the clipboard and history.
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
@@ -95,6 +95,7 @@ Use the pin button or an item's context menu to pin/unpin it. Text items can be 
 - Use `↑`/`↓` to navigate filtered results and `Enter` to paste.
 - Use `⌘1`–`⌘9` to paste the corresponding visible result directly.
 - Right-click an item for `Delete`, `Pin`/`Unpin`, `Paste`, and image editing actions.
+- Use `Extract Text & Copy` from an image item's Smart Paste menu or context menu to run local OCR, copy the recognized text as plain text, and add that text to history. GIFs are excluded from extraction.
 - Click the eye button or choose `Quick Look` from an item's context menu to open the native preview. File previews use the original local reference; image and text previews use temporary app-owned copies that are removed when the preview closes.
 - Use `Ignore Next Copy` when the next clipboard change should not enter history.
 - Use `Pause History` from the menu bar or Settings when capture should stop temporarily.
@@ -115,6 +116,8 @@ The stack is session-only and is not persisted as a second copy of history. Each
 Quick Look is available from the eye button on every picker row or from the item's context menu. It previews copied text, images, animated GIFs, and files in the native macOS Quick Look panel. Previewing never copies or deletes original files and does not create another history item.
 
 Static images are processed locally with Apple's Vision framework. OCR runs asynchronously after capture, so the image is available immediately; existing images without OCR metadata are indexed after the history loads. Once indexing finishes, search-as-you-type also matches recognized text. OCR data is stored only in the local history file and is never uploaded.
+
+To reuse the recognized text itself, choose `Extract Text & Copy` from a static image's Smart Paste menu or context menu. The extracted plain text replaces the system pasteboard contents, is added as a normal text history item, and can be pasted immediately with `⌘V`. If no text is detected, the image remains unchanged and no text item is created.
 
 ### Favorites and snippets
 
@@ -201,7 +204,7 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 git diff --check
 ```
 
-The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, Favorites/Snippets persistence and deduplication, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
+The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, Favorites/Snippets persistence and deduplication, static-image extraction eligibility, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
 
 ## Known limitations
 
@@ -211,6 +214,7 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
 - Favorites/Snippets currently store text only; images and files remain in the regular history.
+- OCR extraction currently supports static image history items; animated GIFs are intentionally excluded.
 - Clipboard Stack currently advances one item at a time; batch paste controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.

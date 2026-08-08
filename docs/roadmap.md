@@ -62,6 +62,7 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Keep the manual `⌘V` fallback when Accessibility is unavailable.
 - Open native Quick Look previews for copied text, images, animated GIFs, and existing local file references.
 - Index text from copied static images locally with Apple Vision so screenshots can be searched.
+- Extract recognized text from a static image, copy it as plain text, and add the result to history.
 - Export the latest GIF or an individual GIF history item to a local `.gif` file.
 - Save text history items as persistent, editable Favorites/Snippets.
 

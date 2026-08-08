@@ -384,6 +384,7 @@ final class AppState: ObservableObject {
             onTogglePin: { [weak self] item in self?.togglePin(item) },
             onPreview: { [weak self] item in self?.preview(item) },
             onEdit: { [weak self] item in self?.editImage(item) },
+            onExtractText: { [weak self] item in self?.extractText(item) },
             onSaveGIF: { [weak self] item in self?.saveGIF(item) },
             onSaveFavorite: { [weak self] item in self?.saveAsFavorite(item) },
             onDelete: { [weak self] item in self?.deleteItem(item) }
@@ -404,6 +405,55 @@ final class AppState: ObservableObject {
             material: material,
             onCopy: { [weak self] data in self?.copyAnnotatedScreenshot(data) }
         )
+    }
+
+    func extractText(_ item: ClipboardItem) {
+        guard item.canExtractText, let imageData = item.imageData else {
+            statusMessage = "Text extraction is available for static images only."
+            return
+        }
+
+        panelController.close()
+        statusMessage = "Extracting text…"
+        let storedOCRText = item.ocrText
+
+        Task { [weak self] in
+            let recognizedText: String?
+            if let storedOCRText {
+                recognizedText = storedOCRText
+            } else {
+                recognizedText = await Task.detached(priority: .userInitiated) {
+                    LocalOCRService.recognize(imageData: imageData)
+                }.value
+            }
+
+            guard let self else { return }
+            guard let recognizedText, !recognizedText.isEmpty else {
+                self.statusMessage = "No text was detected in the image."
+                return
+            }
+
+            self.copyExtractedText(recognizedText)
+        }
+    }
+
+    private func copyExtractedText(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        monitor.suppressCapture()
+        pasteboard.clearContents()
+        guard pasteboard.setString(text, forType: .string) else {
+            statusMessage = "The extracted text could not be copied."
+            return
+        }
+
+        store.ingest(ClipboardSnapshot(
+            text: text,
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            fileURLs: []
+        ))
+        statusMessage = "Extracted text copied to the clipboard."
     }
 
     func preview(_ item: ClipboardItem) {

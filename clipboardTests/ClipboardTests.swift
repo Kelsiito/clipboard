@@ -131,6 +131,37 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(imageItem.preview, "Copied image")
     }
 
+    func testTextExtractionIsAvailableOnlyForStaticImages() {
+        let textItem = ClipboardItem(
+            fingerprint: "extract-text",
+            text: "hello",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let imageItem = ClipboardItem(
+            fingerprint: "extract-image",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "public.png",
+            files: []
+        )
+        let gifItem = ClipboardItem(
+            fingerprint: "extract-gif",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "com.compuserve.gif",
+            files: []
+        )
+
+        XCTAssertFalse(textItem.canExtractText)
+        XCTAssertTrue(imageItem.canExtractText)
+        XCTAssertFalse(gifItem.canExtractText)
+    }
+
     func testClipboardItemSearchMatchesTextCaseAndDiacritics() {
         let item = ClipboardItem(
             fingerprint: "search-text",

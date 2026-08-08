@@ -20,6 +20,7 @@
 - GIFs can be exported through the menu bar or an individual GIF history row using the native save panel; export does not duplicate history.
 - Text history items can be saved as persistent Favorites/Snippets, then searched, edited, pasted, or deleted independently of history cleanup.
 - Static images are OCR-indexed asynchronously with Apple's Vision framework; recognized text is persisted locally and participates in search.
+- Static image rows expose `Extract Text & Copy`, which copies locally recognized text as plain text and adds it to history; animated GIFs are excluded.
 - The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
 ## Storage and privacy
