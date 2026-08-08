@@ -96,6 +96,87 @@ struct SettingsView: View {
                                 .controlSize(.small)
                                 Spacer()
                             }
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            HStack {
+                                Text("Retention")
+                                Spacer()
+                                Picker("Retention", selection: $appState.retention) {
+                                    ForEach(ClipboardRetention.allCases) { option in
+                                        Text(option.title).tag(option)
+                                    }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.menu)
+                                .controlSize(.small)
+                            }
+
+                            Text("Unpinned items older than this are removed automatically. Pinned items are kept.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 8)
+                        }
+                    }
+                }
+
+                settingsSection("Privacy") {
+                    settingsCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Label(
+                                    appState.isHistoryPaused ? "History paused" : "History capture",
+                                    systemImage: appState.isHistoryPaused ? "pause.circle.fill" : "record.circle"
+                                )
+                                Spacer()
+                                if appState.isHistoryPaused {
+                                    Button("Resume") { appState.resumeHistory() }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                } else {
+                                    Menu("Pause") {
+                                        ForEach(ClipboardPauseDuration.allCases) { duration in
+                                            Button(duration.title) {
+                                                appState.pauseHistory(for: duration)
+                                            }
+                                        }
+                                    }
+                                    .controlSize(.small)
+                                }
+                            }
+
+                            Divider()
+
+                            Text("Ignore applications")
+                                .font(.subheadline.weight(.semibold))
+
+                            if appState.availableApplications.isEmpty {
+                                Text("No other running applications found.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(appState.availableApplications) { application in
+                                    Toggle(isOn: Binding(
+                                        get: { appState.isApplicationIgnored(application.bundleIdentifier) },
+                                        set: { appState.setApplicationIgnored(application.bundleIdentifier, ignored: $0) }
+                                    )) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(application.displayName)
+                                            Text(application.bundleIdentifier)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .toggleStyle(.checkbox)
+                                }
+                            }
+
+                            Text("Copies made while an ignored application is active are not stored.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -184,6 +265,9 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Pinned items and original files remain untouched.")
+        }
+        .task {
+            appState.refreshAvailableApplications()
         }
     }
 

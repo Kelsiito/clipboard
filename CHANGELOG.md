@@ -16,6 +16,7 @@ This file records user-visible changes. The project currently publishes source r
 - Individual item deletion, clear-unpinned history, and one-shot `Ignore Next Copy` privacy action.
 - Local picker shortcuts `⌘1`–`⌘9` for direct paste of visible results.
 - Opt-in Launch at Login using Apple's `SMAppService` API.
+- Privacy controls for ignored applications, temporary capture pauses, and age-based retention of unpinned history.
 
 ### Current feature set
 
@@ -30,7 +31,7 @@ This file records user-visible changes. The project currently publishes source r
 
 - Source builds are unsigned and not notarized.
 - Apps that expose only a window-level accessibility element cannot provide an exact caret coordinate; the picker uses a deterministic area fallback.
-- No cloud sync, per-app ignore rules, pause/retention controls, or App Store package is included.
+- No cloud sync, signing, notarization, or App Store package is included.
 
 ### Repository and distribution
 

@@ -163,6 +163,37 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testStoreRetentionRemovesOldUnpinnedItemsButKeepsPinnedItems() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory, retention: .oneDay)
+        let oldDate = Date(timeIntervalSince1970: 1_000)
+
+        store.ingest(
+            ClipboardSnapshot(text: "old unpinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []),
+            now: oldDate
+        )
+        store.ingest(
+            ClipboardSnapshot(text: "old pinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []),
+            now: oldDate
+        )
+        let pinnedID = try! XCTUnwrap(store.items.first(where: { $0.text == "old pinned" })).id
+        XCTAssertTrue(store.setPinned(pinnedID, pinned: true))
+
+        let removed = store.pruneExpired(now: oldDate.addingTimeInterval(2 * 24 * 60 * 60))
+        XCTAssertEqual(removed, 1)
+        XCTAssertEqual(store.items.map(\.text), ["old pinned"])
+        XCTAssertTrue(store.items[0].isPinned)
+    }
+
+    func testRetentionOptionsHaveExpectedTitlesAndIntervals() {
+        XCTAssertEqual(ClipboardRetention.allCases, [.never, .oneDay, .sevenDays, .thirtyDays])
+        XCTAssertNil(ClipboardRetention.never.interval)
+        XCTAssertEqual(ClipboardRetention.oneDay.interval, 24 * 60 * 60)
+        XCTAssertEqual(ClipboardRetention.sevenDays.title, "7 days")
+        XCTAssertEqual(ClipboardRetention.thirtyDays.title, "30 days")
+    }
+
+    @MainActor
     func testIgnoreNextCopyIsConsumedOnce() {
         let monitor = PasteboardMonitor()
         XCTAssertFalse(monitor.isIgnoringNextCopy)
@@ -171,6 +202,28 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(monitor.consumeIgnoreNextCopy())
         XCTAssertFalse(monitor.isIgnoringNextCopy)
         XCTAssertFalse(monitor.consumeIgnoreNextCopy())
+    }
+
+    @MainActor
+    func testPasteboardMonitorPauseCanBeResumed() {
+        let monitor = PasteboardMonitor()
+        XCTAssertFalse(monitor.isPaused)
+
+        monitor.pauseHistory(for: .untilResumed)
+        XCTAssertTrue(monitor.isPaused)
+
+        monitor.resumeHistory()
+        XCTAssertFalse(monitor.isPaused)
+    }
+
+    @MainActor
+    func testPasteboardMonitorFiltersIgnoredApplications() {
+        let monitor = PasteboardMonitor()
+        monitor.ignoredBundleIdentifiers = ["com.example.private"]
+
+        XCTAssertTrue(monitor.shouldIgnore(bundleIdentifier: "com.example.private"))
+        XCTAssertFalse(monitor.shouldIgnore(bundleIdentifier: "com.example.editor"))
+        XCTAssertFalse(monitor.shouldIgnore(bundleIdentifier: nil))
     }
 
     func testAppearanceModesMapToExpectedColorSchemes() {

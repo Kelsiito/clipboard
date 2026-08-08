@@ -9,12 +9,18 @@ final class ClipboardStore: ObservableObject {
     private let fileManager = FileManager.default
     private let historyURL: URL
     private(set) var limit: Int
+    private(set) var retention: ClipboardRetention
 
-    init(directoryURL: URL? = nil, limit: Int = 50) {
+    init(
+        directoryURL: URL? = nil,
+        limit: Int = 50,
+        retention: ClipboardRetention = .never
+    ) {
         let directory = directoryURL ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("clipboard", isDirectory: true)
         historyURL = directory.appendingPathComponent("history.json")
         self.limit = min(max(limit, 10), 200)
+        self.retention = retention
         load()
     }
 
@@ -23,6 +29,13 @@ final class ClipboardStore: ObservableObject {
         if items.count > limit {
             sortItems()
             items = Array(items.prefix(limit))
+            save()
+        }
+    }
+
+    func setRetention(_ value: ClipboardRetention, now: Date = Date()) {
+        retention = value
+        if pruneExpired(now: now, persist: false) > 0 {
             save()
         }
     }
@@ -57,11 +70,12 @@ final class ClipboardStore: ObservableObject {
         return removedCount
     }
 
-    func ingest(_ snapshot: ClipboardSnapshot) {
+    func ingest(_ snapshot: ClipboardSnapshot, now: Date = Date()) {
         guard !snapshot.isEmpty else { return }
         let fileReferences = snapshot.fileURLs.compactMap(makeFileReference)
         let wasPinned = items.first(where: { $0.fingerprint == snapshot.fingerprint })?.isPinned ?? false
         let item = ClipboardItem(
+            createdAt: now,
             fingerprint: snapshot.fingerprint,
             text: snapshot.text,
             richTextData: snapshot.richTextData,
@@ -74,9 +88,15 @@ final class ClipboardStore: ObservableObject {
 
         items.removeAll { $0.fingerprint == item.fingerprint }
         items.insert(item, at: 0)
+        _ = pruneExpired(now: now, persist: false)
         sortItems()
         items = Array(items.prefix(limit))
         save()
+    }
+
+    @discardableResult
+    func pruneExpired(now: Date = Date()) -> Int {
+        pruneExpired(now: now, persist: true)
     }
 
     func clear() {
@@ -101,10 +121,22 @@ final class ClipboardStore: ObservableObject {
             let data = try Data(contentsOf: historyURL)
             items = Array(try JSONDecoder.clipboardDecoder.decode([ClipboardItem].self, from: data).prefix(limit))
             normalizePinnedItems()
+            let removedCount = pruneExpired(now: Date(), persist: false)
             sortItems()
+            if removedCount > 0 { save() }
         } catch {
             items = []
         }
+    }
+
+    private func pruneExpired(now: Date, persist: Bool) -> Int {
+        guard let interval = retention.interval else { return 0 }
+        let cutoff = now.addingTimeInterval(-interval)
+        let originalCount = items.count
+        items.removeAll { !$0.isPinned && $0.createdAt < cutoff }
+        let removedCount = originalCount - items.count
+        if removedCount > 0 && persist { save() }
+        return removedCount
     }
 
     private func normalizePinnedItems() {

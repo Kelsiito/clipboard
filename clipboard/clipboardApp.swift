@@ -41,6 +41,24 @@ struct ClipboardApp: App {
                 Label("Ignore Next Copy", systemImage: "eye.slash")
             }
 
+            if appState.isHistoryPaused {
+                Button {
+                    appState.resumeHistory()
+                } label: {
+                    Label("Resume History", systemImage: "play.circle")
+                }
+            } else {
+                Menu {
+                    ForEach(ClipboardPauseDuration.allCases) { duration in
+                        Button(duration.title) {
+                            appState.pauseHistory(for: duration)
+                        }
+                    }
+                } label: {
+                    Label("Pause History", systemImage: "pause.circle")
+                }
+            }
+
             Divider()
 
             Button {
