@@ -45,6 +45,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - restart the app and verify history persistence;
 - open the picker with the default and a changed history hotkey;
 - start and stop GIF recording with the default and a changed GIF hotkey;
+- configure, use, and clear the optional Clipboard Stack start and paste-next hotkeys;
 - capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;

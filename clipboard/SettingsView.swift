@@ -55,6 +55,24 @@ struct SettingsView: View {
                                 configuration: appState.gifHotKey,
                                 target: .gif
                             )
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            hotKeyRow(
+                                title: "Start Clipboard Stack",
+                                configuration: appState.stackStartHotKey,
+                                target: .stackStart
+                            )
+
+                            Divider()
+                                .padding(.vertical, 12)
+
+                            hotKeyRow(
+                                title: "Paste Next Stack Item",
+                                configuration: appState.stackNextHotKey,
+                                target: .stackNext
+                            )
                         }
                     }
                 }
@@ -296,16 +314,16 @@ struct SettingsView: View {
 
     private func hotKeyRow(
         title: String,
-        configuration: HotKeyConfiguration,
+        configuration: HotKeyConfiguration?,
         target: HotKeyTarget
     ) -> some View {
         HStack(spacing: 12) {
             Text(title)
             Spacer(minLength: 12)
-            Text(appState.isRecordingHotKey(for: target) ? "Press a new combination…" : configuration.displayString)
+            Text(appState.isRecordingHotKey(for: target) ? "Press a new combination…" : configuration?.displayString ?? "Not set")
                 .monospaced()
                 .foregroundStyle(.secondary)
-            Button(appState.isRecordingHotKey(for: target) ? "Cancel" : "Change") {
+            Button(appState.isRecordingHotKey(for: target) ? "Cancel" : configuration == nil ? "Set" : "Change") {
                 if appState.isRecordingHotKey(for: target) {
                     appState.stopRecordingHotKey()
                 } else {
@@ -314,6 +332,14 @@ struct SettingsView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+
+            if configuration != nil && !appState.isRecordingHotKey(for: target) {
+                Button("Clear") {
+                    appState.clearHotKey(for: target)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+            }
         }
     }
 

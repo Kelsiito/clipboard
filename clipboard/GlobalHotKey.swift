@@ -45,9 +45,14 @@ final class GlobalHotKeyManager {
     }
 
     @discardableResult
-    func register(_ configuration: HotKeyConfiguration) -> Bool {
+    func register(_ configuration: HotKeyConfiguration?) -> Bool {
         let previous = currentConfiguration
         unregisterHotKey()
+
+        guard let configuration else {
+            currentConfiguration = nil
+            return true
+        }
 
         let identifier = EventHotKeyID(signature: Self.signature, id: identifier)
         var newRef: EventHotKeyRef?

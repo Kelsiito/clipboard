@@ -23,7 +23,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 ## Features
 
 - Menu-bar-only app; it does not add a normal Dock icon.
-- Configurable global hotkeys: history defaults to `⌘⇧V`, GIF recording defaults to `⌘G`.
+- Configurable global hotkeys: history defaults to `⌘⇧V`, GIF recording defaults to `⌘G`; Clipboard Stack hotkeys are optional and unset by default.
 - Capture and annotate images from the menu-bar menu with the native macOS area selector.
 - Lightweight screenshot editor with freehand drawing, lines, arrows, rectangles, undo, and clear.
 - Record a selected screen area as an animated GIF and copy it directly to the pasteboard and history.
@@ -103,7 +103,7 @@ Use the pin button or an item's context menu to pin/unpin it. Image rows also ex
 4. Focus the destination field and choose `Paste Next Stack Item` for each field. The selected item is restored to the pasteboard and pasted automatically when Accessibility is available; otherwise press `⌘V` manually before advancing.
 5. Choose `Clear Clipboard Stack` to discard the remaining sequence.
 
-The stack is session-only and is not persisted as a second copy of history. Each queued entry points to the existing local history item.
+The stack is session-only and is not persisted as a second copy of history. Each queued entry points to the existing local history item. Optional hotkeys for `Start Clipboard Stack` and `Paste Next Stack Item` can be configured in Settings; neither has a default, and both can be cleared.
 
 ### Capture and annotate
 

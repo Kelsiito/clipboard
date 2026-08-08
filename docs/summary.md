@@ -11,10 +11,11 @@
 - The picker shows three rows, supports scrolling, search-as-you-type, arrow navigation, `Enter`, `Esc`, click-outside dismissal, and a close button.
 - `⌘1`–`⌘9` paste the corresponding visible filtered result; item context menus support deletion.
 - Items can be pinned, with a maximum of three pinned entries shown first.
-- Settings cover both hotkeys, a 10–200 history limit, clearing all or unpinned history, opt-in Launch at Login, and Accessibility status.
+- Settings cover the history and GIF hotkeys, optional unset-by-default Clipboard Stack hotkeys, a 10–200 history limit, clearing all or unpinned history, opt-in Launch at Login, and Accessibility status.
 - The menu-bar menu exposes `Ignore Next Copy`, which skips one eligible pasteboard snapshot.
 - Privacy controls can ignore selected applications, pause capture for 15 minutes, 1 hour, or until resumed, and expire unpinned history after a chosen retention period.
 - Clipboard Stack can capture subsequent copies in order and restore them one at a time for sequential paste.
+- Clipboard Stack start and paste-next hotkeys are optional, persisted only after the user configures them, and can be cleared from Settings.
 - The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
 ## Storage and privacy
@@ -64,7 +65,7 @@ The XCTest suite covers persistence, images, file bookmarks, deduplication, limi
 
 - Text, image, and multiple-file capture and paste.
 - Restart persistence.
-- Default and changed hotkeys.
+- Default and changed history/GIF hotkeys, plus optional Clipboard Stack hotkeys with no defaults.
 - Three-row scrolling and pin limit.
 - Close button, `Esc`, outside click, and click-to-paste dismissal.
 - Menu-bar Settings and Quit actions.
