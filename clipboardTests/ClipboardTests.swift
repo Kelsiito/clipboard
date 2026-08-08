@@ -130,6 +130,49 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(item.matchesSearch("presentation"))
     }
 
+    @MainActor
+    func testStoreRemovesSingleItemAndPersistsDeletion() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory)
+        store.ingest(ClipboardSnapshot(text: "keep", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
+        store.ingest(ClipboardSnapshot(text: "remove", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
+
+        let itemToRemove = try! XCTUnwrap(store.items.first(where: { $0.text == "remove" }))
+        XCTAssertTrue(store.remove(itemToRemove.id))
+        XCTAssertFalse(store.items.contains(where: { $0.id == itemToRemove.id }))
+
+        let reloaded = ClipboardStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.items.map(\.text), ["keep"])
+    }
+
+    @MainActor
+    func testStoreClearsOnlyUnpinnedItems() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory)
+        store.ingest(ClipboardSnapshot(text: "unpinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
+        store.ingest(ClipboardSnapshot(text: "pinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
+        let pinnedID = try! XCTUnwrap(store.items.first(where: { $0.text == "pinned" })).id
+        XCTAssertTrue(store.setPinned(pinnedID, pinned: true))
+
+        XCTAssertEqual(store.clearUnpinned(), 1)
+        XCTAssertEqual(store.items.map(\.text), ["pinned"])
+
+        let reloaded = ClipboardStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.items.map(\.text), ["pinned"])
+        XCTAssertTrue(reloaded.items[0].isPinned)
+    }
+
+    @MainActor
+    func testIgnoreNextCopyIsConsumedOnce() {
+        let monitor = PasteboardMonitor()
+        XCTAssertFalse(monitor.isIgnoringNextCopy)
+        monitor.ignoreNextCopy()
+        XCTAssertTrue(monitor.isIgnoringNextCopy)
+        XCTAssertTrue(monitor.consumeIgnoreNextCopy())
+        XCTAssertFalse(monitor.isIgnoringNextCopy)
+        XCTAssertFalse(monitor.consumeIgnoreNextCopy())
+    }
+
     func testAppearanceModesMapToExpectedColorSchemes() {
         XCTAssertNil(ClipboardAppearance.system.colorScheme)
         XCTAssertEqual(ClipboardAppearance.light.colorScheme, .light)

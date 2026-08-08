@@ -12,6 +12,10 @@ This file records user-visible changes. The project currently publishes source r
 - Native area capture and local image annotation with drawing, line, arrow, and rectangle tools.
 - Direct `Edit image` actions for image items in the history picker.
 - Local screen recording to animated GIF, copied directly to the pasteboard and history.
+- Search-as-you-type across text, content kind, and file metadata.
+- Individual item deletion, clear-unpinned history, and one-shot `Ignore Next Copy` privacy action.
+- Local picker shortcuts `⌘1`–`⌘9` for direct paste of visible results.
+- Opt-in Launch at Login using Apple's `SMAppService` API.
 
 ### Current feature set
 
@@ -26,7 +30,7 @@ This file records user-visible changes. The project currently publishes source r
 
 - Source builds are unsigned and not notarized.
 - Apps that expose only a window-level accessibility element cannot provide an exact caret coordinate; the picker uses a deterministic area fallback.
-- No cloud sync, search, launch-at-login, per-item deletion, or App Store package is included.
+- No cloud sync, per-app ignore rules, pause/retention controls, or App Store package is included.
 
 ### Repository and distribution
 

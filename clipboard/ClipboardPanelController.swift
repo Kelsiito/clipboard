@@ -70,7 +70,8 @@ final class ClipboardPanelController {
         material: ClipboardMaterial,
         onPaste: @escaping (ClipboardItem, ClipboardPasteFormat) -> Void,
         onTogglePin: @escaping (ClipboardItem) -> Void,
-        onEdit: @escaping (ClipboardItem) -> Void
+        onEdit: @escaping (ClipboardItem) -> Void,
+        onDelete: @escaping (ClipboardItem) -> Void
     ) {
         // Resolve the caret before creating or activating any clipboard UI so focus
         // still belongs to the app where the user intends to paste.
@@ -87,6 +88,7 @@ final class ClipboardPanelController {
                 onPaste: onPaste,
                 onTogglePin: onTogglePin,
                 onEdit: onEdit,
+                onDelete: onDelete,
                 onClose: { [weak self] in self?.close() }
             )
         )
@@ -485,6 +487,7 @@ struct ClipboardPanelView: View {
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
     let onTogglePin: (ClipboardItem) -> Void
     let onEdit: (ClipboardItem) -> Void
+    let onDelete: (ClipboardItem) -> Void
     let onClose: () -> Void
 
     @State private var selectedID: UUID?
@@ -541,6 +544,7 @@ struct ClipboardPanelView: View {
                             }
                             Divider()
                             Button("Paste") { onPaste(item, .original) }
+                            Button("Delete", role: .destructive) { onDelete(item) }
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { onPaste(item, .original) }
@@ -599,6 +603,9 @@ struct ClipboardPanelView: View {
             keepSelectionVisible(in: items)
         }
         .onExitCommand(perform: clearSearchOrClose)
+        .onKeyPress(characters: .decimalDigits, phases: [.down]) { press in
+            numberedShortcutResult(for: press)
+        }
     }
 
     private var searchField: some View {
@@ -627,6 +634,9 @@ struct ClipboardPanelView: View {
                 .onKeyPress(.escape) {
                     clearSearchOrClose()
                     return .handled
+                }
+                .onKeyPress(characters: .decimalDigits, phases: [.down]) { press in
+                    numberedShortcutResult(for: press)
                 }
 
             if !searchQuery.isEmpty {
@@ -710,6 +720,18 @@ struct ClipboardPanelView: View {
             searchQuery = ""
             isSearchFocused = true
         }
+    }
+
+    private func numberedShortcutResult(for press: KeyPress) -> KeyPress.Result {
+        guard press.modifiers == .command,
+              let number = Int(press.characters),
+              (1...9).contains(number)
+        else { return .ignored }
+
+        let visibleItems = store.items.filter { $0.matchesSearch(searchQuery) }
+        guard visibleItems.indices.contains(number - 1) else { return .handled }
+        onPaste(visibleItems[number - 1], .original)
+        return .handled
     }
 }
 

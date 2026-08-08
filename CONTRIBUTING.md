@@ -49,8 +49,13 @@ For changes to the picker or settings, also run the relevant manual checks:
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;
 - cancel a GIF recording and verify no history item or local file is created;
-- verify arrow navigation, `Enter`, `Esc`, close button, click-outside dismissal, scrolling, and pinning;
-- verify Settings, Clear History, Quit, and the menu-bar item;
+- verify search-as-you-type, filtered arrow navigation, `Enter`, `Esc`, and `⌘1`–`⌘9` shortcuts;
+- delete one item from its context menu and verify it stays deleted after restart;
+- clear unpinned history and verify pinned items remain;
+- choose `Ignore Next Copy`, copy synthetic content, and verify only that copy is skipped;
+- enable and disable Launch at Login, then verify the setting survives relaunch;
+- verify close button, click-outside dismissal, scrolling, and pinning;
+- verify Settings, Clear History, Clear unpinned, Ignore Next Copy, Quit, and the menu-bar item;
 - test with Accessibility denied and granted;
 - test target positioning in a standard text editor and in an app that exposes only a window-level accessibility element.
 

@@ -40,6 +40,23 @@ final class ClipboardStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    func remove(_ id: UUID) -> Bool {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return false }
+        items.remove(at: index)
+        save()
+        return true
+    }
+
+    @discardableResult
+    func clearUnpinned() -> Int {
+        let originalCount = items.count
+        items.removeAll { !$0.isPinned }
+        let removedCount = originalCount - items.count
+        if removedCount > 0 { save() }
+        return removedCount
+    }
+
     func ingest(_ snapshot: ClipboardSnapshot) {
         guard !snapshot.isEmpty else { return }
         let fileReferences = snapshot.fileURLs.compactMap(makeFileReference)

@@ -10,6 +10,8 @@ final class PasteboardMonitor {
     private var lastChangeCount = NSPasteboard.general.changeCount
     private var suppressedUntil = Date.distantPast
 
+    private(set) var isIgnoringNextCopy = false
+
     func start() {
         guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
@@ -29,6 +31,17 @@ final class PasteboardMonitor {
         lastChangeCount = NSPasteboard.general.changeCount
     }
 
+    func ignoreNextCopy() {
+        isIgnoringNextCopy = true
+    }
+
+    @discardableResult
+    func consumeIgnoreNextCopy() -> Bool {
+        guard isIgnoringNextCopy else { return false }
+        isIgnoringNextCopy = false
+        return true
+    }
+
     private func poll() {
         let pasteboard = NSPasteboard.general
         let changeCount = pasteboard.changeCount
@@ -37,6 +50,7 @@ final class PasteboardMonitor {
 
         guard Date() >= suppressedUntil else { return }
         guard let snapshot = makeSnapshot(from: pasteboard) else { return }
+        guard !consumeIgnoreNextCopy() else { return }
         onSnapshot?(snapshot)
     }
 
