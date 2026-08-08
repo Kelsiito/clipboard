@@ -59,8 +59,9 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Finish the stack and paste one queued item at a time into the focused destination.
 - Keep the manual `⌘V` fallback when Accessibility is unavailable.
 - Open native Quick Look previews for copied text, images, animated GIFs, and existing local file references.
+- Index text from copied static images locally with Apple Vision so screenshots can be searched.
 
-Local OCR for image retrieval remains the next v1.3 candidate.
+The remaining v1.3 candidate is a simple favorites/snippets layer.
 
 ## Distribution and documentation track
 
@@ -82,7 +83,6 @@ These tasks are independent from feature implementation and do not block v1.1 co
 These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
 - Favorites or snippets, kept simpler than a general template manager.
-- Local OCR for image retrieval.
 - Signed and notarized distribution.
 - Dedicated local GIF export action.
 - Optional App Store packaging, subject to the required sandbox and permission model.

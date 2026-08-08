@@ -18,7 +18,7 @@ The project is source-first and intentionally simple: SwiftUI + AppKit, Apple fr
 
 Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.app/)
 
-> Status: public v1.2 privacy-controls milestone merged; v1.3 Clipboard Stack and Quick Look previews are implemented locally. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
+> Status: public v1.2 privacy-controls milestone merged; v1.3 Clipboard Stack, Quick Look previews, and local OCR are implemented locally. The repository builds locally, but the app is not currently signed, notarized, or distributed through the Mac App Store. See the [release checklist](docs/release.md) for the distribution path.
 
 ## Features
 
@@ -36,6 +36,7 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
 - Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
 - Quick Look previews text, images, GIFs, and existing local file references without changing the stored history or original files.
+- Local OCR indexes text in copied static images and screenshots for private, offline search.
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
@@ -110,6 +111,8 @@ The stack is session-only and is not persisted as a second copy of history. Each
 ### Quick Look
 
 Quick Look is available from the eye button on every picker row or from the item's context menu. It previews copied text, images, animated GIFs, and files in the native macOS Quick Look panel. Previewing never copies or deletes original files and does not create another history item.
+
+Static images are processed locally with Apple's Vision framework. OCR runs asynchronously after capture, so the image is available immediately; existing images without OCR metadata are indexed after the history loads. Once indexing finishes, search-as-you-type also matches recognized text. OCR data is stored only in the local history file and is never uploaded.
 
 ### Capture and annotate
 

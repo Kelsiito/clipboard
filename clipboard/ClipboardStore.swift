@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class ClipboardStore: ObservableObject {
@@ -96,6 +97,7 @@ final class ClipboardStore: ObservableObject {
         sortItems()
         items = Array(items.prefix(limit))
         save()
+        scheduleOCRIfNeeded(for: item)
     }
 
     @discardableResult
@@ -105,6 +107,13 @@ final class ClipboardStore: ObservableObject {
 
     func clear() {
         items.removeAll()
+        save()
+    }
+
+    private func setOCRText(_ text: String, for id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        guard items[index].ocrText != text else { return }
+        items[index].ocrText = text
         save()
     }
 
@@ -128,8 +137,25 @@ final class ClipboardStore: ObservableObject {
             let removedCount = pruneExpired(now: Date(), persist: false)
             sortItems()
             if removedCount > 0 { save() }
+            items.forEach { scheduleOCRIfNeeded(for: $0) }
         } catch {
             items = []
+        }
+    }
+
+    private func scheduleOCRIfNeeded(for item: ClipboardItem) {
+        guard item.ocrText == nil,
+              let imageData = item.imageData,
+              item.imageType != UTType.gif.identifier else { return }
+
+        let itemID = item.id
+        Task { [weak self] in
+            let recognizedText = await Task.detached(priority: .utility) {
+                LocalOCRService.recognize(imageData: imageData)
+            }.value
+
+            guard let recognizedText, !recognizedText.isEmpty else { return }
+            self?.setOCRText(recognizedText, for: itemID)
         }
     }
 

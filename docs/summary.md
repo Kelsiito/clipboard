@@ -17,6 +17,7 @@
 - Clipboard Stack can capture subsequent copies in order and restore them one at a time for sequential paste.
 - Clipboard Stack start and paste-next hotkeys are optional, persisted only after the user configures them, and can be cleared from Settings.
 - Quick Look is available from each picker row and context menu for text, images, animated GIFs, and existing local file references.
+- Static images are OCR-indexed asynchronously with Apple's Vision framework; recognized text is persisted locally and participates in search.
 - The app UI, repository documentation, developer-facing guidance, and source identifiers are English.
 
 ## Storage and privacy
@@ -41,6 +42,7 @@
 - `GlobalHotKey.swift`: Carbon global hotkey registration.
 - `ClipboardPanelController.swift`: floating picker, placement, animations, keyboard navigation, and rows.
 - `QuickLookPreview.swift`: native Quick Look data source with temporary preview copies and cleanup.
+- `LocalOCRService.swift`: on-device Vision text recognition for static image history items.
 - `SettingsView.swift`: settings UI and Liquid Glass/material compatibility helpers.
 
 ## Positioning behavior
