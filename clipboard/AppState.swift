@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 enum HotKeyTarget: String, Equatable {
     case history
     case gif
+    case stackStart
+    case stackNext
 }
 
 enum ClipboardAppearance: String, CaseIterable, Hashable, Identifiable {
@@ -75,8 +77,8 @@ final class AppState: ObservableObject {
                 oldHotKey = hotKey
                 return
             }
-            guard hotKey != gifHotKey else {
-                statusMessage = "History and GIF hotkeys must be different."
+            guard !isHotKeyInUse(hotKey, excluding: .history) else {
+                statusMessage = "Hotkeys must be different."
                 hotKey = oldHotKey
                 return
             }
@@ -96,8 +98,8 @@ final class AppState: ObservableObject {
                 oldGIFHotKey = gifHotKey
                 return
             }
-            guard gifHotKey != hotKey else {
-                statusMessage = "History and GIF hotkeys must be different."
+            guard !isHotKeyInUse(gifHotKey, excluding: .gif) else {
+                statusMessage = "Hotkeys must be different."
                 gifHotKey = oldGIFHotKey
                 return
             }
@@ -106,6 +108,48 @@ final class AppState: ObservableObject {
                 gifHotKey = oldGIFHotKey
             } else {
                 oldGIFHotKey = gifHotKey
+            }
+        }
+    }
+
+    @Published var stackStartHotKey: HotKeyConfiguration? {
+        didSet {
+            persistOptionalHotKey(stackStartHotKey, key: Keys.stackStartHotKey)
+            guard hasStarted else {
+                oldStackStartHotKey = stackStartHotKey
+                return
+            }
+            guard !isHotKeyInUse(stackStartHotKey, excluding: .stackStart) else {
+                statusMessage = "That hotkey is already in use."
+                stackStartHotKey = oldStackStartHotKey
+                return
+            }
+            if !stackStartHotKeyManager.register(stackStartHotKey) {
+                statusMessage = "Hotkey unavailable; previous configuration kept."
+                stackStartHotKey = oldStackStartHotKey
+            } else {
+                oldStackStartHotKey = stackStartHotKey
+            }
+        }
+    }
+
+    @Published var stackNextHotKey: HotKeyConfiguration? {
+        didSet {
+            persistOptionalHotKey(stackNextHotKey, key: Keys.stackNextHotKey)
+            guard hasStarted else {
+                oldStackNextHotKey = stackNextHotKey
+                return
+            }
+            guard !isHotKeyInUse(stackNextHotKey, excluding: .stackNext) else {
+                statusMessage = "That hotkey is already in use."
+                stackNextHotKey = oldStackNextHotKey
+                return
+            }
+            if !stackNextHotKeyManager.register(stackNextHotKey) {
+                statusMessage = "Hotkey unavailable; previous configuration kept."
+                stackNextHotKey = oldStackNextHotKey
+            } else {
+                oldStackNextHotKey = stackNextHotKey
             }
         }
     }
@@ -135,6 +179,8 @@ final class AppState: ObservableObject {
 
     @Published private(set) var availableApplications: [ClipboardApplication] = []
     @Published private(set) var isHistoryPaused = false
+    @Published private(set) var isCapturingStack = false
+    @Published private(set) var clipboardStack = ClipboardStack()
 
     @Published var appearance: ClipboardAppearance {
         didSet {
@@ -181,6 +227,8 @@ final class AppState: ObservableObject {
     private let monitor = PasteboardMonitor()
     private let hotKeyManager = GlobalHotKeyManager(identifier: 1)
     private let gifHotKeyManager = GlobalHotKeyManager(identifier: 2)
+    private let stackStartHotKeyManager = GlobalHotKeyManager(identifier: 3)
+    private let stackNextHotKeyManager = GlobalHotKeyManager(identifier: 4)
     private let panelController = ClipboardPanelController()
     private let screenshotCaptureService = ScreenshotCaptureService()
     private let screenGIFRecorder = ScreenGIFRecorder()
@@ -193,10 +241,14 @@ final class AppState: ObservableObject {
     private var isUpdatingLaunchAtLogin = false
     private var oldHotKey: HotKeyConfiguration
     private var oldGIFHotKey: HotKeyConfiguration
+    private var oldStackStartHotKey: HotKeyConfiguration?
+    private var oldStackNextHotKey: HotKeyConfiguration?
     private var recordingHotKeyTarget: HotKeyTarget?
     private enum Keys {
         static let hotKey = "clipboard.hotKey"
         static let gifHotKey = "clipboard.gifHotKey"
+        static let stackStartHotKey = "clipboard.stackStartHotKey"
+        static let stackNextHotKey = "clipboard.stackNextHotKey"
         static let historyLimit = "clipboard.historyLimit"
         static let retention = "clipboard.retention"
         static let ignoredBundleIdentifiers = "clipboard.ignoredBundleIdentifiers"
@@ -215,6 +267,10 @@ final class AppState: ObservableObject {
         )
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
         let savedGIFHotKey = (UserDefaults.standard.data(forKey: Keys.gifHotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .gifDefault
+        let savedStackStartHotKey = UserDefaults.standard.data(forKey: Keys.stackStartHotKey)
+            .flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }
+        let savedStackNextHotKey = UserDefaults.standard.data(forKey: Keys.stackNextHotKey)
+            .flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }
         let savedIgnoredBundleIdentifiers = Set(UserDefaults.standard.stringArray(forKey: Keys.ignoredBundleIdentifiers) ?? [])
         let savedAppearance = UserDefaults.standard.string(forKey: Keys.appearance)
             .flatMap(ClipboardAppearance.init(rawValue:)) ?? .system
@@ -224,6 +280,10 @@ final class AppState: ObservableObject {
         oldHotKey = savedHotKey
         gifHotKey = savedGIFHotKey
         oldGIFHotKey = savedGIFHotKey
+        stackStartHotKey = savedStackStartHotKey
+        oldStackStartHotKey = savedStackStartHotKey
+        stackNextHotKey = savedStackNextHotKey
+        oldStackNextHotKey = savedStackNextHotKey
         historyLimit = store.limit
         retention = savedRetention
         ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
@@ -237,9 +297,20 @@ final class AppState: ObservableObject {
         gifHotKeyManager.onHotKey = { [weak self] in
             self?.toggleGIFRecording()
         }
+        stackStartHotKeyManager.onHotKey = { [weak self] in
+            self?.startClipboardStack()
+        }
+        stackNextHotKeyManager.onHotKey = { [weak self] in
+            self?.pasteNextStackItem()
+        }
         monitor.ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
         monitor.onSnapshot = { [weak self] snapshot, _ in
-            self?.store.ingest(snapshot)
+            guard let self else { return }
+            self.store.ingest(snapshot)
+            guard self.isCapturingStack,
+                  let item = self.store.items.first(where: { $0.fingerprint == snapshot.fingerprint })
+            else { return }
+            self.clipboardStack.append(item.id)
         }
     }
 
@@ -251,12 +322,16 @@ final class AppState: ObservableObject {
         monitor.start()
         oldHotKey = hotKey
         oldGIFHotKey = gifHotKey
+        oldStackStartHotKey = stackStartHotKey
+        oldStackNextHotKey = stackNextHotKey
         if !hotKeyManager.register(hotKey) {
             statusMessage = "Could not register \(hotKey.displayString)."
         }
         if !gifHotKeyManager.register(gifHotKey) {
             statusMessage = "Could not register \(gifHotKey.displayString) for GIF recording."
         }
+        _ = stackStartHotKeyManager.register(stackStartHotKey)
+        _ = stackNextHotKeyManager.register(stackNextHotKey)
         accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.isAccessibilityTrusted = AXIsProcessTrusted()
@@ -269,8 +344,12 @@ final class AppState: ObservableObject {
         monitor.stop()
         hotKeyManager.stop()
         gifHotKeyManager.stop()
+        stackStartHotKeyManager.stop()
+        stackNextHotKeyManager.stop()
         screenGIFRecorder.cancel()
         annotationEditorController.close()
+        isCapturingStack = false
+        clipboardStack.removeAll()
         accessibilityTimer?.invalidate()
         accessibilityTimer = nil
         stopRecordingHotKey()
@@ -455,6 +534,73 @@ final class AppState: ObservableObject {
         ignoredBundleIdentifiers = updated
     }
 
+    func startClipboardStack() {
+        clipboardStack.removeAll()
+        targetApplication = nil
+        isCapturingStack = true
+        statusMessage = "Stack capture started. Copy the items you want to paste in sequence."
+    }
+
+    func finishClipboardStack() {
+        isCapturingStack = false
+        if clipboardStack.isEmpty {
+            statusMessage = "Stack capture finished without items."
+        } else {
+            let suffix = clipboardStack.count == 1 ? "" : "s"
+            statusMessage = "Stack ready: \(clipboardStack.count) item\(suffix) queued."
+        }
+    }
+
+    func cancelClipboardStack() {
+        isCapturingStack = false
+        clipboardStack.removeAll()
+        targetApplication = nil
+        statusMessage = "Stack cleared."
+    }
+
+    func clearClipboardStack() {
+        clipboardStack.removeAll()
+        targetApplication = nil
+        statusMessage = "Stack cleared."
+    }
+
+    func pasteNextStackItem() {
+        guard !isCapturingStack else {
+            statusMessage = "Finish stack capture before pasting."
+            return
+        }
+
+        while let firstID = clipboardStack.itemIDs.first,
+              store.item(withID: firstID) == nil {
+            _ = clipboardStack.removeFirst()
+        }
+
+        guard let firstID = clipboardStack.itemIDs.first,
+              let item = store.item(withID: firstID)
+        else {
+            targetApplication = nil
+            statusMessage = "The clipboard stack is empty."
+            return
+        }
+
+        let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
+        targetApplication = panelController.targetApplication(excluding: currentProcessIdentifier) ?? targetApplication
+        let canPasteAutomatically = AXIsProcessTrusted() && targetApplication != nil
+        guard paste(item, targetApplicationOverride: targetApplication) else { return }
+        _ = clipboardStack.removeFirst()
+
+        if clipboardStack.isEmpty {
+            targetApplication = nil
+            statusMessage = canPasteAutomatically
+                ? "Last stack item pasted."
+                : "Last stack item is on the clipboard. Press ⌘V to paste."
+        } else {
+            statusMessage = canPasteAutomatically
+                ? "Stack item pasted. (\(clipboardStack.count)) remaining."
+                : "Stack item ready on the clipboard. Press ⌘V, then paste the next item."
+        }
+    }
+
     func ignoreNextCopy() {
         monitor.ignoreNextCopy()
         statusMessage = "Next clipboard copy will be ignored."
@@ -468,7 +614,13 @@ final class AppState: ObservableObject {
         stopRecordingHotKey()
         recordingHotKeyTarget = target
         isRecordingHotKey = true
-        let prompt = target == .gif ? "Press a new GIF combination…" : "Press a new history combination…"
+        let prompt: String
+        switch target {
+        case .history: prompt = "Press a new history combination…"
+        case .gif: prompt = "Press a new GIF combination…"
+        case .stackStart: prompt = "Press a new stack start combination…"
+        case .stackNext: prompt = "Press a new paste next combination…"
+        }
         statusMessage = prompt
         recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self else { return event }
@@ -479,6 +631,10 @@ final class AppState: ObservableObject {
             let modifiers = HotKeyConfiguration.modifiers(from: event.modifierFlags)
             guard modifiers != 0 else { return event }
             let candidate = HotKeyConfiguration(keyCode: UInt32(event.keyCode), modifiers: modifiers)
+            guard !self.isHotKeyInUse(candidate, excluding: target) else {
+                self.statusMessage = "That hotkey is already in use."
+                return nil
+            }
             let registered: Bool
             switch target {
             case .history:
@@ -492,6 +648,18 @@ final class AppState: ObservableObject {
                 if registered {
                     self.oldGIFHotKey = self.gifHotKey
                     self.gifHotKey = candidate
+                }
+            case .stackStart:
+                registered = self.stackStartHotKeyManager.register(candidate)
+                if registered {
+                    self.oldStackStartHotKey = self.stackStartHotKey
+                    self.stackStartHotKey = candidate
+                }
+            case .stackNext:
+                registered = self.stackNextHotKeyManager.register(candidate)
+                if registered {
+                    self.oldStackNextHotKey = self.stackNextHotKey
+                    self.stackNextHotKey = candidate
                 }
             }
             if registered {
@@ -517,6 +685,40 @@ final class AppState: ObservableObject {
 
     func isRecordingHotKey(for target: HotKeyTarget) -> Bool {
         isRecordingHotKey && recordingHotKeyTarget == target
+    }
+
+    func clearHotKey(for target: HotKeyTarget) {
+        switch target {
+        case .stackStart:
+            stackStartHotKey = nil
+            statusMessage = "Stack start hotkey cleared."
+        case .stackNext:
+            stackNextHotKey = nil
+            statusMessage = "Paste next hotkey cleared."
+        case .history, .gif:
+            break
+        }
+    }
+
+    private func persistOptionalHotKey(_ configuration: HotKeyConfiguration?, key: String) {
+        guard let configuration else {
+            UserDefaults.standard.removeObject(forKey: key)
+            return
+        }
+        UserDefaults.standard.set(try? JSONEncoder().encode(configuration), forKey: key)
+    }
+
+    private func isHotKeyInUse(_ candidate: HotKeyConfiguration?, excluding target: HotKeyTarget) -> Bool {
+        guard let candidate else { return false }
+        let configured: [(HotKeyTarget, HotKeyConfiguration?)] = [
+            (.history, hotKey),
+            (.gif, gifHotKey),
+            (.stackStart, stackStartHotKey),
+            (.stackNext, stackNextHotKey)
+        ]
+        return configured.contains { configuredTarget, configuration in
+            configuredTarget != target && configuration == candidate
+        }
     }
 
     func openAccessibilitySettings() {
@@ -640,10 +842,15 @@ final class AppState: ObservableObject {
         statusMessage = "GIF copied to the clipboard. Press ⌘V to paste."
     }
 
-    private func paste(_ item: ClipboardItem, format: ClipboardPasteFormat = .original) {
+    @discardableResult
+    private func paste(
+        _ item: ClipboardItem,
+        format: ClipboardPasteFormat = .original,
+        targetApplicationOverride: NSRunningApplication? = nil
+    ) -> Bool {
         guard let payload = ClipboardPasteFormatter.payload(for: item, format: format) else {
             statusMessage = "\(format.title) is unavailable for this item."
-            return
+            return false
         }
 
         panelController.close()
@@ -659,15 +866,18 @@ final class AppState: ObservableObject {
         let urls = payload.fileURLs
         if !urls.isEmpty { pasteboard.writeObjects(urls as [NSURL]) }
 
-        guard let targetApplication else { return }
+        guard let destination = targetApplicationOverride ?? targetApplication else {
+            statusMessage = "Item restored to the clipboard. Press ⌘V to paste."
+            return true
+        }
         guard AXIsProcessTrusted() else {
             statusMessage = "Enable Accessibility for automatic paste."
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
-            return
+            return true
         }
 
-        targetApplication.activate(options: [])
+        destination.activate(options: [])
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             let source = CGEventSource(stateID: .hidSystemState)
             let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true)
@@ -677,5 +887,6 @@ final class AppState: ObservableObject {
             keyDown?.post(tap: .cghidEventTap)
             keyUp?.post(tap: .cghidEventTap)
         }
+        return true
     }
 }

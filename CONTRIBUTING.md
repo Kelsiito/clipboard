@@ -45,6 +45,7 @@ For changes to the picker or settings, also run the relevant manual checks:
 - restart the app and verify history persistence;
 - open the picker with the default and a changed history hotkey;
 - start and stop GIF recording with the default and a changed GIF hotkey;
+- configure, use, and clear the optional Clipboard Stack start and paste-next hotkeys;
 - capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;
@@ -56,6 +57,8 @@ For changes to the picker or settings, also run the relevant manual checks:
 - open Settings → Privacy, ignore a running test app, and verify copies from it are not stored;
 - pause history for 15 minutes, resume it, and verify paused copies are not stored;
 - choose a short retention period with synthetic old fixtures and verify unpinned items expire while pinned items remain;
+- start a Clipboard Stack, copy synthetic fields in order, finish it, and paste each queued item into a test field;
+- clear or cancel a stack and verify no extra history payload is created;
 - enable and disable Launch at Login, then verify the setting survives relaunch;
 - verify close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Clear unpinned, Ignore Next Copy, Quit, and the menu-bar item;

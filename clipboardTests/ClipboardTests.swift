@@ -226,6 +226,21 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(monitor.shouldIgnore(bundleIdentifier: nil))
     }
 
+    func testClipboardStackPreservesCopyOrderAndConsumesItems() {
+        let first = UUID()
+        let second = UUID()
+        var stack = ClipboardStack()
+
+        stack.append(first)
+        stack.append(second)
+
+        XCTAssertEqual(stack.count, 2)
+        XCTAssertEqual(stack.removeFirst(), first)
+        XCTAssertEqual(stack.removeFirst(), second)
+        XCTAssertNil(stack.removeFirst())
+        XCTAssertTrue(stack.isEmpty)
+    }
+
     func testAppearanceModesMapToExpectedColorSchemes() {
         XCTAssertNil(ClipboardAppearance.system.colorScheme)
         XCTAssertEqual(ClipboardAppearance.light.colorScheme, .light)

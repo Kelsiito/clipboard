@@ -17,6 +17,8 @@ This file records user-visible changes. The project currently publishes source r
 - Local picker shortcuts `⌘1`–`⌘9` for direct paste of visible results.
 - Opt-in Launch at Login using Apple's `SMAppService` API.
 - Privacy controls for ignored applications, temporary capture pauses, and age-based retention of unpinned history.
+- Clipboard Stack capture and sequential paste controls for ordered form and data entry.
+- Optional, unset-by-default hotkeys for starting a Clipboard Stack and pasting its next item.
 
 ### Current feature set
 

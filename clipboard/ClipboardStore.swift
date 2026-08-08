@@ -61,6 +61,10 @@ final class ClipboardStore: ObservableObject {
         return true
     }
 
+    func item(withID id: UUID) -> ClipboardItem? {
+        items.first(where: { $0.id == id })
+    }
+
     @discardableResult
     func clearUnpinned() -> Int {
         let originalCount = items.count
