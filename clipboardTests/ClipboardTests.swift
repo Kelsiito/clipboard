@@ -69,6 +69,61 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testSnippetStorePersistsCollectionsAndNormalizedTags() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SnippetStore(directoryURL: directory)
+
+        let snippet = try XCTUnwrap(store.add(
+            title: "Deploy command",
+            text: "make deploy",
+            collection: "  Work  ",
+            tags: ["Shell", " release ", "shell", ""]
+        ))
+
+        XCTAssertEqual(snippet.collection, "Work")
+        XCTAssertEqual(snippet.tags, ["Shell", "release"])
+
+        let reloaded = SnippetStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.snippets.first?.collection, "Work")
+        XCTAssertEqual(reloaded.snippets.first?.tags, ["Shell", "release"])
+    }
+
+    func testLegacySnippetDecodesWithoutCollectionOrTags() throws {
+        let id = UUID()
+        let json = """
+        {
+          "id": "\(id.uuidString)",
+          "createdAt": "2026-08-09T20:00:00Z",
+          "title": "Legacy",
+          "text": "legacy text"
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let snippet = try decoder.decode(ClipboardSnippet.self, from: Data(json.utf8))
+
+        XCTAssertNil(snippet.collection)
+        XCTAssertEqual(snippet.tags, [])
+    }
+
+    func testSnippetLibrarySearchAndMetadataFilters() {
+        let snippet = ClipboardSnippet(
+            title: "Deploy command",
+            text: "make deploy",
+            collection: "Work",
+            tags: ["Shell", "Release"]
+        )
+
+        XCTAssertTrue(snippet.matchesLibrary(query: "deploy", collection: nil, tag: nil))
+        XCTAssertTrue(snippet.matchesLibrary(query: "work", collection: nil, tag: nil))
+        XCTAssertTrue(snippet.matchesLibrary(query: "release", collection: nil, tag: nil))
+        XCTAssertTrue(snippet.matchesLibrary(query: "", collection: "Work", tag: "Shell"))
+        XCTAssertFalse(snippet.matchesLibrary(query: "", collection: "Personal", tag: nil))
+        XCTAssertFalse(snippet.matchesLibrary(query: "", collection: nil, tag: "Swift"))
+    }
+
+    @MainActor
     func testStorePinsMaximumThreeItemsAndPersistsOrder() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = ClipboardStore(directoryURL: directory)

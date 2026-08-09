@@ -482,11 +482,11 @@ final class AppState: ObservableObject {
 
     func saveAsFavorite(_ item: ClipboardItem) {
         guard let text = item.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            statusMessage = "Only text items can be saved as favorites."
+            statusMessage = "Only text items can be saved to the Library."
             return
         }
         _ = snippetStore.add(text: text)
-        statusMessage = "Favorite saved."
+        statusMessage = "Saved to Library."
     }
 
     func showFavorites() {
@@ -506,7 +506,7 @@ final class AppState: ObservableObject {
             window.appearance = appearance.nsAppearance
             window.setContentSize(favoritesSize)
             window.minSize = NSSize(width: 420, height: 320)
-            window.title = "Favorites — clipboard"
+            window.title = "Library — clipboard"
             window.titlebarAppearsTransparent = false
             window.titleVisibility = .visible
             window.isOpaque = true
