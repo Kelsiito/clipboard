@@ -75,10 +75,15 @@ final class ClipboardStore: ObservableObject {
         return removedCount
     }
 
-    func ingest(_ snapshot: ClipboardSnapshot, now: Date = Date()) {
+    func ingest(
+        _ snapshot: ClipboardSnapshot,
+        sourceApplication: ClipboardSourceApplication? = nil,
+        now: Date = Date()
+    ) {
         guard !snapshot.isEmpty else { return }
         let fileReferences = snapshot.fileURLs.compactMap(makeFileReference)
-        let wasPinned = items.first(where: { $0.fingerprint == snapshot.fingerprint })?.isPinned ?? false
+        let existingItem = items.first(where: { $0.fingerprint == snapshot.fingerprint })
+        let wasPinned = existingItem?.isPinned ?? false
         let item = ClipboardItem(
             createdAt: now,
             fingerprint: snapshot.fingerprint,
@@ -87,7 +92,8 @@ final class ClipboardStore: ObservableObject {
             imageData: snapshot.imageData,
             imageType: snapshot.imageType,
             files: fileReferences,
-            isPinned: wasPinned
+            isPinned: wasPinned,
+            sourceApplication: sourceApplication ?? existingItem?.sourceApplication
         )
         guard !item.isEmpty else { return }
 
@@ -195,6 +201,109 @@ final class ClipboardStore: ObservableObject {
             try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: historyURL.path)
         } catch {
             // Clipboard capture stays functional in memory if disk persistence fails.
+        }
+    }
+}
+
+@MainActor
+final class SnippetStore: ObservableObject {
+    @Published private(set) var snippets: [ClipboardSnippet] = []
+
+    private let fileManager = FileManager.default
+    private let snippetsURL: URL
+
+    init(directoryURL: URL? = nil) {
+        let directory = directoryURL ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("clipboard", isDirectory: true)
+        snippetsURL = directory.appendingPathComponent("snippets.json")
+        load()
+    }
+
+    @discardableResult
+    func add(title: String? = nil, text: String, now: Date = Date()) -> ClipboardSnippet? {
+        let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedText.isEmpty else { return nil }
+        if let existing = snippets.first(where: { $0.text == normalizedText }) {
+            return existing
+        }
+
+        let normalizedTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let snippet = ClipboardSnippet(
+            createdAt: now,
+            title: normalizedTitle?.isEmpty == false
+                ? normalizedTitle!
+                : ClipboardSnippet.suggestedTitle(for: normalizedText),
+            text: normalizedText
+        )
+        snippets.insert(snippet, at: 0)
+        save()
+        return snippet
+    }
+
+    @discardableResult
+    func update(_ snippet: ClipboardSnippet) -> Bool {
+        let normalizedText = snippet.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedText.isEmpty,
+              let index = snippets.firstIndex(where: { $0.id == snippet.id })
+        else { return false }
+
+        var updated = snippet
+        updated.title = snippet.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if updated.title.isEmpty {
+            updated.title = ClipboardSnippet.suggestedTitle(for: normalizedText)
+        }
+        updated.text = normalizedText
+        snippets[index] = updated
+        sortSnippets()
+        save()
+        return true
+    }
+
+    @discardableResult
+    func upsert(_ snippet: ClipboardSnippet) -> Bool {
+        if snippets.contains(where: { $0.id == snippet.id }) {
+            return update(snippet)
+        }
+        return add(title: snippet.title, text: snippet.text, now: snippet.createdAt) != nil
+    }
+
+    @discardableResult
+    func remove(_ id: UUID) -> Bool {
+        guard let index = snippets.firstIndex(where: { $0.id == id }) else { return false }
+        snippets.remove(at: index)
+        save()
+        return true
+    }
+
+    private func load() {
+        guard fileManager.fileExists(atPath: snippetsURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: snippetsURL)
+            snippets = try JSONDecoder.clipboardDecoder.decode([ClipboardSnippet].self, from: data)
+            snippets = snippets.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            sortSnippets()
+        } catch {
+            snippets = []
+        }
+    }
+
+    private func sortSnippets() {
+        snippets.sort { $0.createdAt > $1.createdAt }
+    }
+
+    private func save() {
+        do {
+            let directory = snippetsURL.deletingLastPathComponent()
+            try fileManager.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            let data = try JSONEncoder.clipboardEncoder.encode(snippets)
+            try data.write(to: snippetsURL, options: .atomic)
+            try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: snippetsURL.path)
+        } catch {
+            // Snippets remain functional in memory if disk persistence fails.
         }
     }
 }

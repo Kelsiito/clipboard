@@ -48,10 +48,13 @@ For changes to the picker or settings, also run the relevant manual checks:
 - configure, use, and clear the optional Clipboard Stack start and paste-next hotkeys;
 - open Quick Look from the row eye button and context menu for text, images, animated GIFs, and local files;
 - copy a synthetic screenshot, wait for local OCR indexing, and find it by searching text visible only inside the image;
+- use `Extract Text & Copy` on a synthetic screenshot, verify the recognized plain text reaches the system clipboard and appears as a new text history item, and verify an image with no text does not create one;
 - capture a non-sensitive test area, draw with each annotation tool, and copy the finished PNG;
 - record a short non-sensitive area with the GIF selection overlay, stop it from the menu bar, and verify it is animated;
 - verify the GIF appears in history and pastes with `⌘V`;
+- save the latest GIF from the menu bar and an individual GIF from its history row, including a filename without an extension, and verify the exported file is a valid `.gif` without duplicating history;
 - cancel a GIF recording and verify no history item or local file is created;
+- save a text history item as a Favorite, create and edit a Favorite, paste it, search it, delete it, and verify it survives history cleanup and restart;
 - verify search-as-you-type, filtered arrow navigation, `Enter`, `Esc`, and `⌘1`–`⌘9` shortcuts;
 - delete one item from its context menu and verify it stays deleted after restart;
 - clear unpinned history and verify pinned items remain;

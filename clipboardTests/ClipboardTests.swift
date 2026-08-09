@@ -36,6 +36,39 @@ final class ClipboardTests: XCTestCase {
     }
 
     @MainActor
+    func testSnippetStorePersistsUpdatesAndDeletes() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SnippetStore(directoryURL: directory)
+
+        let snippet = try XCTUnwrap(store.add(text: "  curl https://example.com  "))
+        XCTAssertEqual(snippet.title, "curl https://example.com")
+        XCTAssertEqual(store.snippets.count, 1)
+
+        var updated = snippet
+        updated.title = "Health check"
+        updated.text = "curl https://example.com/health"
+        XCTAssertTrue(store.update(updated))
+
+        let reloaded = SnippetStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.snippets.first?.title, "Health check")
+        XCTAssertEqual(reloaded.snippets.first?.text, "curl https://example.com/health")
+        XCTAssertTrue(reloaded.remove(snippet.id))
+        XCTAssertTrue(reloaded.snippets.isEmpty)
+    }
+
+    @MainActor
+    func testSnippetStoreRejectsEmptyTextAndDeduplicates() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SnippetStore(directoryURL: directory)
+
+        XCTAssertNil(store.add(text: "   \n"))
+        let first = store.add(title: "First", text: "same text")
+        let duplicate = store.add(title: "Second", text: "same text")
+        XCTAssertEqual(first?.id, duplicate?.id)
+        XCTAssertEqual(store.snippets.count, 1)
+    }
+
+    @MainActor
     func testStorePinsMaximumThreeItemsAndPersistsOrder() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = ClipboardStore(directoryURL: directory)
@@ -75,6 +108,24 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(decoded.isPinned)
     }
 
+    func testLegacyItemDecodesWithoutSourceApplication() throws {
+        let item = ClipboardItem(
+            fingerprint: "legacy-source",
+            text: "old item",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let encoded = try JSONEncoder().encode(item)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "sourceApplication")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(ClipboardItem.self, from: legacyData)
+        XCTAssertNil(decoded.sourceApplication)
+    }
+
     func testContentLabelsUseEnglishCopy() {
         let textItem = ClipboardItem(
             fingerprint: "text",
@@ -96,6 +147,37 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(textItem.kindLabel, "Text")
         XCTAssertEqual(imageItem.kindLabel, "Image")
         XCTAssertEqual(imageItem.preview, "Copied image")
+    }
+
+    func testTextExtractionIsAvailableOnlyForStaticImages() {
+        let textItem = ClipboardItem(
+            fingerprint: "extract-text",
+            text: "hello",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let imageItem = ClipboardItem(
+            fingerprint: "extract-image",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "public.png",
+            files: []
+        )
+        let gifItem = ClipboardItem(
+            fingerprint: "extract-gif",
+            text: nil,
+            richTextData: nil,
+            imageData: Data([1]),
+            imageType: "com.compuserve.gif",
+            files: []
+        )
+
+        XCTAssertFalse(textItem.canExtractText)
+        XCTAssertTrue(imageItem.canExtractText)
+        XCTAssertFalse(gifItem.canExtractText)
     }
 
     func testClipboardItemSearchMatchesTextCaseAndDiacritics() {
@@ -145,6 +227,70 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(item.matchesSearch("quarterly"))
         XCTAssertTrue(item.matchesSearch("REVENUE"))
         XCTAssertFalse(item.matchesSearch("invoice"))
+    }
+
+    func testClipboardHistoryFiltersMatchSourceTypeDatePinAndOCR() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let source = ClipboardSourceApplication(
+            bundleIdentifier: "com.example.editor",
+            name: "Editor"
+        )
+        let item = ClipboardItem(
+            createdAt: now.addingTimeInterval(-2 * 24 * 60 * 60),
+            fingerprint: "filter-item",
+            text: "A saved note",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            ocrText: "Recognized text",
+            files: [],
+            isPinned: true,
+            sourceApplication: source
+        )
+
+        XCTAssertTrue(item.matches(
+            ClipboardHistoryFilter(
+                type: .text,
+                date: .lastSevenDays,
+                sourceAppBundleIdentifier: source.bundleIdentifier,
+                pinnedOnly: true,
+                hasOCR: true
+            ),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(type: .image),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(date: .today),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(sourceAppBundleIdentifier: "com.example.other"),
+            now: now
+        ))
+        XCTAssertTrue(item.matches(
+            ClipboardHistoryFilter(hasOCR: true),
+            now: now
+        ))
+    }
+
+    @MainActor
+    func testStorePersistsSourceApplicationMetadata() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let source = ClipboardSourceApplication(
+            bundleIdentifier: "com.example.browser",
+            name: "Example Browser"
+        )
+        let store = ClipboardStore(directoryURL: directory)
+        store.ingest(
+            ClipboardSnapshot(text: "source item", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []),
+            sourceApplication: source
+        )
+
+        let reloaded = ClipboardStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.items.first?.sourceApplication, source)
     }
 
     func testLegacyItemDecodesWithoutOCRText() throws {
@@ -403,6 +549,18 @@ final class ClipboardTests: XCTestCase {
         let payload = try XCTUnwrap(ClipboardPasteFormatter.payload(for: item, format: .original))
         XCTAssertEqual(payload.imageData, gifData)
         XCTAssertEqual(payload.imageType, "com.compuserve.gif")
+    }
+
+    func testGIFFileExporterWritesDataAndAddsExtension() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let chosenURL = directory.appendingPathComponent("recording")
+        let data = Data([1, 2, 3])
+
+        let outputURL = try GIFFileExporter.write(data, to: chosenURL)
+
+        XCTAssertEqual(outputURL.pathExtension, "gif")
+        XCTAssertEqual(try Data(contentsOf: outputURL), data)
     }
 
     @MainActor

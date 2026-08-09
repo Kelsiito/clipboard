@@ -72,6 +72,9 @@ final class ClipboardPanelController {
         onTogglePin: @escaping (ClipboardItem) -> Void,
         onPreview: @escaping (ClipboardItem) -> Void,
         onEdit: @escaping (ClipboardItem) -> Void,
+        onExtractText: @escaping (ClipboardItem) -> Void,
+        onSaveGIF: @escaping (ClipboardItem) -> Void,
+        onSaveFavorite: @escaping (ClipboardItem) -> Void,
         onDelete: @escaping (ClipboardItem) -> Void
     ) {
         // Resolve the caret before creating or activating any clipboard UI so focus
@@ -90,6 +93,9 @@ final class ClipboardPanelController {
                 onTogglePin: onTogglePin,
                 onPreview: onPreview,
                 onEdit: onEdit,
+                onExtractText: onExtractText,
+                onSaveGIF: onSaveGIF,
+                onSaveFavorite: onSaveFavorite,
                 onDelete: onDelete,
                 onClose: { [weak self] in self?.close() }
             )
@@ -490,11 +496,19 @@ struct ClipboardPanelView: View {
     let onTogglePin: (ClipboardItem) -> Void
     let onPreview: (ClipboardItem) -> Void
     let onEdit: (ClipboardItem) -> Void
+    let onExtractText: (ClipboardItem) -> Void
+    let onSaveGIF: (ClipboardItem) -> Void
+    let onSaveFavorite: (ClipboardItem) -> Void
     let onDelete: (ClipboardItem) -> Void
     let onClose: () -> Void
 
     @State private var selectedID: UUID?
     @State private var searchQuery = ""
+    @State private var typeFilter: ClipboardHistoryTypeFilter = .all
+    @State private var dateFilter: ClipboardHistoryDateFilter = .allTime
+    @State private var sourceAppFilter: String?
+    @State private var pinnedOnly = false
+    @State private var hasOCR = false
     @State private var isPresented = false
     @FocusState private var isSearchFocused: Bool
 
@@ -502,7 +516,9 @@ struct ClipboardPanelView: View {
 
     var body: some View {
         let allItems = store.items
-        let items = allItems.filter { $0.matchesSearch(searchQuery) }
+        let items = allItems.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         let panelShape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
         VStack(alignment: .leading, spacing: 8) {
@@ -539,12 +555,21 @@ struct ClipboardPanelView: View {
                         onPaste: onPaste,
                         onTogglePin: { onTogglePin(item) },
                         onPreview: { onPreview(item) },
-                        onEdit: { onEdit(item) }
+                        onEdit: { onEdit(item) },
+                        onExtractText: { onExtractText(item) },
+                        onSaveGIF: { onSaveGIF(item) }
                     )
                         .contextMenu {
                             Button(item.isPinned ? "Unpin" : "Pin") { onTogglePin(item) }
-                            if item.hasImage && !item.isGIF {
+                            if item.hasText {
+                                Button("Save as Favorite…") { onSaveFavorite(item) }
+                            }
+                            if item.canExtractText {
                                 Button("Edit image") { onEdit(item) }
+                                Button("Extract Text & Copy") { onExtractText(item) }
+                            }
+                            if item.isGIF {
+                                Button("Save GIF…") { onSaveGIF(item) }
                             }
                             Button("Quick Look") { onPreview(item) }
                             Divider()
@@ -655,6 +680,8 @@ struct ClipboardPanelView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
             }
+
+            filterMenu
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -664,6 +691,86 @@ struct ClipboardPanelView: View {
                 .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var historyFilter: ClipboardHistoryFilter {
+        ClipboardHistoryFilter(
+            type: typeFilter,
+            date: dateFilter,
+            sourceAppBundleIdentifier: sourceAppFilter,
+            pinnedOnly: pinnedOnly,
+            hasOCR: hasOCR
+        )
+    }
+
+    private var sourceApplications: [ClipboardSourceApplication] {
+        Array(Set(store.items.compactMap(\.sourceApplication)))
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            }
+    }
+
+    private var filterMenu: some View {
+        Menu {
+            Picker("Type", selection: $typeFilter) {
+                ForEach(ClipboardHistoryTypeFilter.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+
+            Picker("Date", selection: $dateFilter) {
+                ForEach(ClipboardHistoryDateFilter.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+
+            if !sourceApplications.isEmpty {
+                Picker("Source app", selection: $sourceAppFilter) {
+                    Text("All apps").tag(Optional<String>.none)
+                    ForEach(sourceApplications) { application in
+                        Text(application.displayName)
+                            .tag(Optional(application.bundleIdentifier))
+                    }
+                }
+            }
+
+            Divider()
+
+            Toggle("Pinned only", isOn: $pinnedOnly)
+            Toggle("Has OCR text", isOn: $hasOCR)
+
+            if !historyFilter.isDefault {
+                Divider()
+                Button("Reset filters") {
+                    resetFilters()
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: historyFilter.isDefault
+                    ? "line.3.horizontal.decrease.circle"
+                    : "line.3.horizontal.decrease.circle.fill")
+                if historyFilter.activeFilterCount > 0 {
+                    Text("\(historyFilter.activeFilterCount)")
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                }
+            }
+            .foregroundStyle(historyFilter.isDefault ? Color.secondary : Color.accentColor)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+        .help("Filter history")
+        .accessibilityLabel("Filter history")
+    }
+
+    private func resetFilters() {
+        typeFilter = .all
+        dateFilter = .allTime
+        sourceAppFilter = nil
+        pinnedOnly = false
+        hasOCR = false
     }
 
     @ViewBuilder
@@ -689,7 +796,9 @@ struct ClipboardPanelView: View {
     }
 
     private func moveSelection(_ direction: MoveCommandDirection) {
-        let items = store.items.filter { $0.matchesSearch(searchQuery) }
+        let items = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard !items.isEmpty else { return }
         let currentIndex = selectedID.flatMap { id in items.firstIndex { $0.id == id } } ?? 0
         let nextIndex: Int
@@ -702,7 +811,9 @@ struct ClipboardPanelView: View {
     }
 
     private func submitSelection() {
-        let items = store.items.filter { $0.matchesSearch(searchQuery) }
+        let items = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard let selectedID, let item = items.first(where: { $0.id == selectedID }) else { return }
         onPaste(item, .original)
     }
@@ -733,7 +844,9 @@ struct ClipboardPanelView: View {
               (1...9).contains(number)
         else { return .ignored }
 
-        let visibleItems = store.items.filter { $0.matchesSearch(searchQuery) }
+        let visibleItems = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard visibleItems.indices.contains(number - 1) else { return .handled }
         onPaste(visibleItems[number - 1], .original)
         return .handled
@@ -746,6 +859,8 @@ private struct ClipboardRow: View {
     let onTogglePin: () -> Void
     let onPreview: () -> Void
     let onEdit: () -> Void
+    let onExtractText: () -> Void
+    let onSaveGIF: () -> Void
 
     @State private var isHovered = false
 
@@ -769,12 +884,16 @@ private struct ClipboardRow: View {
                 Text(item.preview)
                     .lineLimit(2)
                     .font(.body)
-                Text(item.kindLabel)
+                Text(metadataLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            SmartPasteMenu(item: item, onPaste: onPaste)
+            SmartPasteMenu(
+                item: item,
+                onPaste: onPaste,
+                onExtractText: onExtractText
+            )
             Button(action: onPreview) {
                 Image(systemName: "eye")
                     .font(.system(size: 15, weight: .semibold))
@@ -787,6 +906,20 @@ private struct ClipboardRow: View {
             .buttonStyle(.plain)
             .help("Quick Look")
             .accessibilityLabel("Quick Look")
+            if item.isGIF {
+                Button(action: onSaveGIF) {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                        .shadow(color: .black.opacity(0.35), radius: 1.5, y: 1)
+                }
+                .buttonStyle(.plain)
+                .help("Save GIF")
+                .accessibilityLabel("Save GIF")
+            }
             if item.hasImage && !item.isGIF {
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
@@ -832,11 +965,18 @@ private struct ClipboardRow: View {
         if item.hasImage { return "photo" }
         return "text.alignleft"
     }
+
+    private var metadataLabel: String {
+        [item.kindLabel, item.sourceApplicationLabel]
+            .compactMap { $0 }
+            .joined(separator: " • ")
+    }
 }
 
 private struct SmartPasteMenu: View {
     let item: ClipboardItem
     let onPaste: (ClipboardItem, ClipboardPasteFormat) -> Void
+    let onExtractText: () -> Void
 
     var body: some View {
         Menu {
@@ -847,6 +987,14 @@ private struct SmartPasteMenu: View {
                     } label: {
                         Label(format.title, systemImage: format.systemImage)
                     }
+                }
+            }
+            if item.canExtractText {
+                Divider()
+                Button {
+                    onExtractText()
+                } label: {
+                    Label("Extract Text & Copy", systemImage: "doc.text.magnifyingglass")
                 }
             }
         } label: {
@@ -862,5 +1010,240 @@ private struct SmartPasteMenu: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Smart Paste")
         .help("Smart Paste")
+    }
+}
+
+struct FavoritesView: View {
+    @ObservedObject var store: SnippetStore
+    let material: ClipboardMaterial
+    let onPaste: (ClipboardSnippet) -> Void
+    let onClose: () -> Void
+
+    @State private var searchQuery = ""
+    @State private var editingSnippet: ClipboardSnippet?
+
+    private var visibleSnippets: [ClipboardSnippet] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return store.snippets }
+        return store.snippets.filter {
+            $0.title.localizedStandardContains(query) || $0.text.localizedStandardContains(query)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "star.fill")
+                    .foregroundStyle(.yellow)
+                Text("Favorites")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Text("\(store.snippets.count)")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Button(action: { editingSnippet = ClipboardSnippet(title: "", text: "") }) {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("New favorite")
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Close")
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search favorites", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                if !searchQuery.isEmpty {
+                    Button {
+                        searchQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            if visibleSnippets.isEmpty {
+                ContentUnavailableView(
+                    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "No favorites yet"
+                        : "No matches",
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "star"
+                        : "magnifyingglass",
+                    description: Text("Save a text item from history or create one with +.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(visibleSnippets) { snippet in
+                    FavoriteRow(
+                        snippet: snippet,
+                        onPaste: { onPaste(snippet) },
+                        onEdit: { editingSnippet = snippet },
+                        onDelete: { _ = store.remove(snippet.id) }
+                    )
+                    .contextMenu {
+                        Button("Paste") { onPaste(snippet) }
+                        Button("Edit") { editingSnippet = snippet }
+                        Divider()
+                        Button("Delete", role: .destructive) { _ = store.remove(snippet.id) }
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+        }
+        .padding(18)
+        .frame(minWidth: 420, minHeight: 320)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .sheet(item: $editingSnippet) { snippet in
+            SnippetEditorView(snippet: snippet) { updated in
+                if store.upsert(updated) {
+                    editingSnippet = nil
+                }
+            } onCancel: {
+                editingSnippet = nil
+            }
+        }
+    }
+}
+
+private struct FavoriteRow: View {
+    let snippet: ClipboardSnippet
+    let onPaste: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "star.fill")
+                .foregroundStyle(.yellow)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(snippet.title)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                Text(snippet.text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onPaste) {
+                Image(systemName: "arrow.right.circle.fill")
+                    .foregroundStyle(.cyan)
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .help("Paste")
+            .accessibilityLabel("Paste favorite")
+
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+            }
+            .buttonStyle(.plain)
+            .help("Edit")
+            .accessibilityLabel("Edit favorite")
+
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+                    .foregroundStyle(Color.primary.opacity(isHovered ? 0.95 : 0.72))
+            }
+            .buttonStyle(.plain)
+            .help("Delete")
+            .accessibilityLabel("Delete favorite")
+        }
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) {
+                isHovered = hovering
+            }
+        }
+    }
+}
+
+private struct SnippetEditorView: View {
+    let snippet: ClipboardSnippet
+    let onSave: (ClipboardSnippet) -> Void
+    let onCancel: () -> Void
+
+    @State private var title: String
+    @State private var text: String
+
+    init(
+        snippet: ClipboardSnippet,
+        onSave: @escaping (ClipboardSnippet) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.snippet = snippet
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _title = State(initialValue: snippet.title)
+        _text = State(initialValue: snippet.text)
+    }
+
+    private var canSave: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(snippet.text.isEmpty ? "New Favorite" : "Edit Favorite")
+                .font(.title3.weight(.semibold))
+
+            TextField("Title", text: $title)
+                .textFieldStyle(.roundedBorder)
+
+            TextEditor(text: $text)
+                .font(.body)
+                .padding(6)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                }
+
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    onSave(ClipboardSnippet(
+                        id: snippet.id,
+                        createdAt: snippet.createdAt,
+                        title: title,
+                        text: text
+                    ))
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canSave)
+            }
+        }
+        .padding(20)
+        .frame(width: 420, height: 280)
     }
 }

@@ -27,16 +27,19 @@ Project site: [clipboard-site-pi.vercel.app](https://clipboard-site-pi.vercel.ap
 - Capture and annotate images from the menu-bar menu with the native macOS area selector.
 - Lightweight screenshot editor with freehand drawing, lines, arrows, rectangles, undo, and clear.
 - Record a selected screen area as an animated GIF and copy it directly to the pasteboard and history.
+- Save the latest GIF or any GIF history item to a local `.gif` file.
 - Persistent history for plain text, RTF data, PNG/TIFF/JPEG images, and copied file references.
-- Search-as-you-type across text, content kind, and file metadata.
+- Search-as-you-type across text, OCR text, content kind, and file metadata.
+- Compact history filters for content type, date range, source application, pinned items, and OCR-indexed items.
 - SHA-256 fingerprints to avoid duplicate history entries.
 - 50 stored items by default, configurable from 10 to 200.
 - Up to three pinned items, always shown first.
+- Persistent text Favorites/Snippets with editable titles and content, independent of history cleanup.
 - Compact picker with three visible rows, scrolling for older items, search filtering, arrow-key navigation, `Enter` to paste, and `Esc` to close.
 - `⌘1`–`⌘9` paste the matching visible picker item; context menus can delete individual items.
 - Clipboard Stack captures subsequent copies in order, then lets you paste the next queued item one at a time.
 - Quick Look previews text, images, GIFs, and existing local file references without changing the stored history or original files.
-- Local OCR indexes text in copied static images and screenshots for private, offline search.
+- Local OCR indexes text in copied static images and screenshots for private, offline search; `Extract Text & Copy` copies recognized text back to the clipboard and history.
 - Click-outside, close-button, and paste-to-dismiss behavior.
 - Smooth spring entrance animation.
 - Native Liquid Glass surfaces on macOS 26, with a material fallback on macOS 14–25.
@@ -85,14 +88,16 @@ The local Debug build is unsigned and not notarized. macOS may show a trust warn
 3. Select an item with the mouse or arrow keys.
 4. Press `Enter` or click an item to restore it to the pasteboard and paste it into the previously active app.
 
-Use the pin button or an item's context menu to pin/unpin it. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
+Use the pin button or an item's context menu to pin/unpin it. Text items can be saved as persistent Favorites from their context menu. Image rows also expose an `Edit image` button that opens the annotation editor directly; copying the result creates a new history item. GIF rows expose a download button and `Save GIF…` context-menu action. The picker shows up to three rows at once; scroll for older entries. The menu-bar menu contains `Capture and Annotate…`, `Record GIF…`, `Save Latest GIF…`, `Ignore Next Copy`, `Pause History`, `Start Clipboard Stack`, `Favorites…`, `Settings…`, and `Quit`. While recording, it also offers `Stop GIF Recording` and `Cancel GIF Recording`.
 
 ### Search and keyboard shortcuts
 
 - Press `⌘⇧V`, then type immediately. Results filter without changing persisted history.
+- Use the filter button inside the search field to narrow results by type, date, source app, pinned state, or available OCR text. Reset filters from the same menu.
 - Use `↑`/`↓` to navigate filtered results and `Enter` to paste.
 - Use `⌘1`–`⌘9` to paste the corresponding visible result directly.
 - Right-click an item for `Delete`, `Pin`/`Unpin`, `Paste`, and image editing actions.
+- Use `Extract Text & Copy` from an image item's Smart Paste menu or context menu to run local OCR, copy the recognized text as plain text, and add that text to history. GIFs are excluded from extraction.
 - Click the eye button or choose `Quick Look` from an item's context menu to open the native preview. File previews use the original local reference; image and text previews use temporary app-owned copies that are removed when the preview closes.
 - Use `Ignore Next Copy` when the next clipboard change should not enter history.
 - Use `Pause History` from the menu bar or Settings when capture should stop temporarily.
@@ -114,6 +119,12 @@ Quick Look is available from the eye button on every picker row or from the item
 
 Static images are processed locally with Apple's Vision framework. OCR runs asynchronously after capture, so the image is available immediately; existing images without OCR metadata are indexed after the history loads. Once indexing finishes, search-as-you-type also matches recognized text. OCR data is stored only in the local history file and is never uploaded.
 
+To reuse the recognized text itself, choose `Extract Text & Copy` from a static image's Smart Paste menu or context menu. The extracted plain text replaces the system pasteboard contents, is added as a normal text history item, and can be pasted immediately with `⌘V`. If no text is detected, the image remains unchanged and no text item is created.
+
+### Favorites and snippets
+
+Choose `Favorites…` from the menu-bar menu to open the persistent text snippets window. Save a text history item with `Save as Favorite…`, or create one with `+`. Favorites support search, editable titles and content, paste, and deletion. They are stored in `~/Library/Application Support/clipboard/snippets.json` and are not affected by the history item limit, retention cleanup, or `Clear History`. Images and files remain history items and are not converted into snippets.
+
 ### Capture and annotate
 
 1. Choose `Capture and Annotate…` from the menu-bar menu, or click `Edit image` on an image in the history picker.
@@ -131,9 +142,9 @@ macOS may request Screen Recording permission the first time capture is used. Th
 2. Drag over an area with the clipboard selection overlay and release the pointer; recording starts immediately.
 3. Press the GIF hotkey again (`⌘G` by default) or choose `Stop GIF Recording` from the menu bar when finished. Use `Cancel GIF Recording` to discard it.
 4. The app converts the temporary video locally, places the GIF on the pasteboard, and adds it to history.
-5. Press `⌘V` in the target app.
+5. Press `⌘V` in the target app, or choose `Save Latest GIF…` from the menu bar to export the latest GIF locally. You can also save an individual GIF from its history-row download button or context menu.
 
-The GIF is converted at 10 fps, capped at 1280 px wide. The temporary video is removed after conversion or cancellation. Local GIF export uses a separate future action; this flow is optimized for immediate paste.
+The GIF is converted at 10 fps, capped at 1280 px wide. The temporary video is removed after conversion or cancellation. Export uses the native save panel, appends `.gif` when needed, and never creates a duplicate history item.
 
 ### Accessibility and positioning
 
@@ -160,6 +171,7 @@ Clipboard history can contain sensitive information. `clipboard` keeps it on the
 - `Ignore Next Copy` consumes one eligible clipboard snapshot; concealed, transient, autogenerated, and empty snapshots do not consume it.
 - Ignored applications and paused capture never enter history and do not consume `Ignore Next Copy`.
 - Retention removes only unpinned items older than the selected age. Pinned items and original files remain untouched.
+- When available, the source application is stored as local bundle ID/name metadata and can be used to filter history. It is never sent anywhere.
 - There is no sync, network service, account, telemetry, advertising, or analytics code in the app.
 
 To remove all locally stored history, use `Clear History` in the settings window. To remove the app and its remaining support data manually, quit the app first and inspect the `~/Library/Application Support/clipboard/` directory before deleting it.
@@ -172,7 +184,7 @@ clipboard/                       App target
   clipboardApp.swift             Menu-bar scene and app lifecycle
   AppState.swift                 Hotkey, settings, paste orchestration
   PasteboardMonitor.swift        Pasteboard polling and filtering
-  ClipboardStore.swift           Local persistence, dedupe, limits, pins, deletion
+  ClipboardStore.swift           Local persistence, source metadata, filters, dedupe, limits, pins, deletion
   Models.swift                   Codable history and hotkey models
   GlobalHotKey.swift             Carbon global hotkey registration
   ClipboardPanelController.swift Picker window, placement, and paste UI
@@ -195,7 +207,7 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 git diff --check
 ```
 
-The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
+The test suite covers persistence, image payloads, file bookmarks, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, ignored applications, pause state, retention, Favorites/Snippets persistence and deduplication, static-image extraction eligibility, empty/legacy data, annotation rendering, GIF encoding, hotkey defaults, and panel placement geometry. See [CONTRIBUTING.md](CONTRIBUTING.md) for the manual QA checklist and contribution rules.
 
 ## Known limitations
 
@@ -204,7 +216,9 @@ The test suite covers persistence, image payloads, file bookmarks, deduplication
 - File bookmarks can become stale if the original file is moved, deleted, or made inaccessible.
 - New capture and annotate is started from the menu-bar menu; existing static images can also be edited from the history picker. It does not replace macOS screenshot shortcuts.
 - GIF capture is intended for short clips; output is sampled at 10 fps and capped at 1280 px wide.
-- Local GIF file export is not included yet; GIF recording is optimized for immediate paste.
+- Favorites/Snippets currently store text only; images and files remain in the regular history.
+- OCR extraction currently supports static image history items; animated GIFs are intentionally excluded.
+- Source-app metadata and history filters are local-only; older history entries without source metadata remain available under `All apps`.
 - Clipboard Stack currently advances one item at a time; batch paste controls remain future work.
 - The current project does not provide cloud sync, signing, notarization, or App Store packaging. These remain tracked in the [roadmap](docs/roadmap.md).
 - Builds from source are currently unsigned and should be treated as development builds.

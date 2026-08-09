@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class PasteboardMonitor {
-    var onSnapshot: ((ClipboardSnapshot, String?) -> Void)?
+    var onSnapshot: ((ClipboardSnapshot, ClipboardSourceApplication?) -> Void)?
     var ignoredBundleIdentifiers: Set<String> = []
 
     private var timer: Timer?
@@ -69,11 +69,11 @@ final class PasteboardMonitor {
 
         guard Date() >= suppressedUntil else { return }
         guard !isPaused else { return }
-        let sourceBundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        guard !shouldIgnore(bundleIdentifier: sourceBundleIdentifier) else { return }
+        let sourceApplication = sourceApplication(for: NSWorkspace.shared.frontmostApplication)
+        guard !shouldIgnore(bundleIdentifier: sourceApplication?.bundleIdentifier) else { return }
         guard let snapshot = makeSnapshot(from: pasteboard) else { return }
         guard !consumeIgnoreNextCopy() else { return }
-        onSnapshot?(snapshot, sourceBundleIdentifier)
+        onSnapshot?(snapshot, sourceApplication)
     }
 
     private func refreshPauseState() {
@@ -123,5 +123,13 @@ final class PasteboardMonitor {
             fileURLs: fileURLs
         )
         return snapshot.isEmpty ? nil : snapshot
+    }
+
+    private func sourceApplication(for application: NSRunningApplication?) -> ClipboardSourceApplication? {
+        guard let bundleIdentifier = application?.bundleIdentifier else { return nil }
+        return ClipboardSourceApplication(
+            bundleIdentifier: bundleIdentifier,
+            name: application?.localizedName ?? bundleIdentifier
+        )
     }
 }

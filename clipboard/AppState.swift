@@ -186,6 +186,7 @@ final class AppState: ObservableObject {
         didSet {
             UserDefaults.standard.set(appearance.rawValue, forKey: Keys.appearance)
             applyAppearance(appearance, to: settingsWindow)
+            applyAppearance(appearance, to: favoritesWindow)
             panelController.setAppearance(appearance)
         }
     }
@@ -223,6 +224,7 @@ final class AppState: ObservableObject {
     @Published var statusMessage: String?
 
     let store: ClipboardStore
+    let snippetStore: SnippetStore
 
     private let monitor = PasteboardMonitor()
     private let hotKeyManager = GlobalHotKeyManager(identifier: 1)
@@ -235,6 +237,7 @@ final class AppState: ObservableObject {
     private let quickLookPreview = ClipboardQuickLookPreview()
     private let annotationEditorController = AnnotationEditorController()
     private var settingsWindow: NSWindow?
+    private var favoritesWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
     private var recordingMonitor: Any?
     private var accessibilityTimer: Timer?
@@ -266,6 +269,7 @@ final class AppState: ObservableObject {
             limit: savedHistoryLimit == 0 ? 50 : savedHistoryLimit,
             retention: savedRetention
         )
+        snippetStore = SnippetStore()
         let savedHotKey = (UserDefaults.standard.data(forKey: Keys.hotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .default
         let savedGIFHotKey = (UserDefaults.standard.data(forKey: Keys.gifHotKey).flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }) ?? .gifDefault
         let savedStackStartHotKey = UserDefaults.standard.data(forKey: Keys.stackStartHotKey)
@@ -305,9 +309,9 @@ final class AppState: ObservableObject {
             self?.pasteNextStackItem()
         }
         monitor.ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
-        monitor.onSnapshot = { [weak self] snapshot, _ in
+        monitor.onSnapshot = { [weak self] snapshot, sourceApplication in
             guard let self else { return }
-            self.store.ingest(snapshot)
+            self.store.ingest(snapshot, sourceApplication: sourceApplication)
             guard self.isCapturingStack,
                   let item = self.store.items.first(where: { $0.fingerprint == snapshot.fingerprint })
             else { return }
@@ -350,6 +354,7 @@ final class AppState: ObservableObject {
         screenGIFRecorder.cancel()
         annotationEditorController.close()
         quickLookPreview.close()
+        favoritesWindow?.orderOut(nil)
         isCapturingStack = false
         clipboardStack.removeAll()
         accessibilityTimer?.invalidate()
@@ -379,6 +384,9 @@ final class AppState: ObservableObject {
             onTogglePin: { [weak self] item in self?.togglePin(item) },
             onPreview: { [weak self] item in self?.preview(item) },
             onEdit: { [weak self] item in self?.editImage(item) },
+            onExtractText: { [weak self] item in self?.extractText(item) },
+            onSaveGIF: { [weak self] item in self?.saveGIF(item) },
+            onSaveFavorite: { [weak self] item in self?.saveAsFavorite(item) },
             onDelete: { [weak self] item in self?.deleteItem(item) }
         )
     }
@@ -397,6 +405,55 @@ final class AppState: ObservableObject {
             material: material,
             onCopy: { [weak self] data in self?.copyAnnotatedScreenshot(data) }
         )
+    }
+
+    func extractText(_ item: ClipboardItem) {
+        guard item.canExtractText, let imageData = item.imageData else {
+            statusMessage = "Text extraction is available for static images only."
+            return
+        }
+
+        panelController.close()
+        statusMessage = "Extracting text…"
+        let storedOCRText = item.ocrText
+
+        Task { [weak self] in
+            let recognizedText: String?
+            if let storedOCRText {
+                recognizedText = storedOCRText
+            } else {
+                recognizedText = await Task.detached(priority: .userInitiated) {
+                    LocalOCRService.recognize(imageData: imageData)
+                }.value
+            }
+
+            guard let self else { return }
+            guard let recognizedText, !recognizedText.isEmpty else {
+                self.statusMessage = "No text was detected in the image."
+                return
+            }
+
+            self.copyExtractedText(recognizedText, sourceApplication: item.sourceApplication)
+        }
+    }
+
+    private func copyExtractedText(_ text: String, sourceApplication: ClipboardSourceApplication? = nil) {
+        let pasteboard = NSPasteboard.general
+        monitor.suppressCapture()
+        pasteboard.clearContents()
+        guard pasteboard.setString(text, forType: .string) else {
+            statusMessage = "The extracted text could not be copied."
+            return
+        }
+
+        store.ingest(ClipboardSnapshot(
+            text: text,
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            fileURLs: []
+        ), sourceApplication: sourceApplication)
+        statusMessage = "Extracted text copied to the clipboard."
     }
 
     func preview(_ item: ClipboardItem) {
@@ -421,6 +478,64 @@ final class AppState: ObservableObject {
     func deleteItem(_ item: ClipboardItem) {
         guard store.remove(item.id) else { return }
         statusMessage = "Item deleted."
+    }
+
+    func saveAsFavorite(_ item: ClipboardItem) {
+        guard let text = item.text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            statusMessage = "Only text items can be saved as favorites."
+            return
+        }
+        _ = snippetStore.add(text: text)
+        statusMessage = "Favorite saved."
+    }
+
+    func showFavorites() {
+        panelController.close()
+        targetApplication = panelController.targetApplication(
+            excluding: NSRunningApplication.current.processIdentifier
+        )
+
+        if favoritesWindow == nil {
+            let favoritesSize = NSSize(width: 520, height: 430)
+            let window = NSWindow(
+                contentRect: NSRect(origin: .zero, size: favoritesSize),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.appearance = appearance.nsAppearance
+            window.setContentSize(favoritesSize)
+            window.minSize = NSSize(width: 420, height: 320)
+            window.title = "Favorites — clipboard"
+            window.titlebarAppearsTransparent = false
+            window.titleVisibility = .visible
+            window.isOpaque = true
+            window.backgroundColor = .windowBackgroundColor
+            window.isReleasedWhenClosed = false
+            window.level = .floating
+            window.hidesOnDeactivate = false
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+            let rootView = FavoritesView(
+                store: snippetStore,
+                material: material,
+                onPaste: { [weak self] snippet in self?.pasteSnippet(snippet) },
+                onClose: { [weak self] in self?.favoritesWindow?.orderOut(nil) }
+            )
+            let hostingController = NSHostingController(rootView: rootView)
+            hostingController.view.frame = NSRect(origin: .zero, size: favoritesSize)
+            hostingController.view.autoresizingMask = [.width, .height]
+            window.contentViewController = hostingController
+
+            window.center()
+            favoritesWindow = window
+        }
+
+        applyAppearance(appearance, to: favoritesWindow)
+        favoritesWindow?.level = .floating
+        NSApp.activate(ignoringOtherApps: true)
+        favoritesWindow?.orderFrontRegardless()
+        favoritesWindow?.makeKey()
     }
 
     func showSettings() {
@@ -833,6 +948,49 @@ final class AppState: ObservableObject {
         guard isRecordingGIF else { return }
         statusMessage = "Finishing GIF recording…"
         screenGIFRecorder.finish()
+    }
+
+    func saveLatestGIF() {
+        guard let item = store.items.first(where: { $0.isGIF }) else {
+            statusMessage = "No GIF is available to save."
+            return
+        }
+        saveGIF(item)
+    }
+
+    func saveGIF(_ item: ClipboardItem) {
+        guard item.isGIF, let data = item.imageData else {
+            statusMessage = "This item is not a GIF."
+            return
+        }
+
+        panelController.close()
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.gif]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = GIFFileExporter.defaultFilename()
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                let outputURL = try GIFFileExporter.write(data, to: url)
+                self?.statusMessage = "GIF saved to \(outputURL.lastPathComponent)."
+            } catch {
+                self?.statusMessage = "The GIF could not be saved."
+            }
+        }
+    }
+
+    private func pasteSnippet(_ snippet: ClipboardSnippet) {
+        favoritesWindow?.orderOut(nil)
+        let item = ClipboardItem(
+            fingerprint: "snippet-\(snippet.id.uuidString)",
+            text: snippet.text,
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        _ = paste(item, targetApplicationOverride: targetApplication)
     }
 
     private func copyGIFToClipboard(_ data: Data) {

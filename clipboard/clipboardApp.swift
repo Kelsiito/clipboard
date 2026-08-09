@@ -33,6 +33,12 @@ struct ClipboardApp: App {
                 }
             }
 
+            Button {
+                appState.saveLatestGIF()
+            } label: {
+                Label("Save Latest GIF…", systemImage: "square.and.arrow.down")
+            }
+
             Divider()
 
             Button {
@@ -93,6 +99,14 @@ struct ClipboardApp: App {
                 } label: {
                     Label("Clear Clipboard Stack", systemImage: "trash")
                 }
+            }
+
+            Divider()
+
+            Button {
+                appState.showFavorites()
+            } label: {
+                Label("Favorites…", systemImage: "star")
             }
 
             Divider()
