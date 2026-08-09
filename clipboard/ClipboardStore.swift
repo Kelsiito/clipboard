@@ -75,10 +75,15 @@ final class ClipboardStore: ObservableObject {
         return removedCount
     }
 
-    func ingest(_ snapshot: ClipboardSnapshot, now: Date = Date()) {
+    func ingest(
+        _ snapshot: ClipboardSnapshot,
+        sourceApplication: ClipboardSourceApplication? = nil,
+        now: Date = Date()
+    ) {
         guard !snapshot.isEmpty else { return }
         let fileReferences = snapshot.fileURLs.compactMap(makeFileReference)
-        let wasPinned = items.first(where: { $0.fingerprint == snapshot.fingerprint })?.isPinned ?? false
+        let existingItem = items.first(where: { $0.fingerprint == snapshot.fingerprint })
+        let wasPinned = existingItem?.isPinned ?? false
         let item = ClipboardItem(
             createdAt: now,
             fingerprint: snapshot.fingerprint,
@@ -87,7 +92,8 @@ final class ClipboardStore: ObservableObject {
             imageData: snapshot.imageData,
             imageType: snapshot.imageType,
             files: fileReferences,
-            isPinned: wasPinned
+            isPinned: wasPinned,
+            sourceApplication: sourceApplication ?? existingItem?.sourceApplication
         )
         guard !item.isEmpty else { return }
 

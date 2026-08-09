@@ -108,6 +108,24 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(decoded.isPinned)
     }
 
+    func testLegacyItemDecodesWithoutSourceApplication() throws {
+        let item = ClipboardItem(
+            fingerprint: "legacy-source",
+            text: "old item",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            files: []
+        )
+        let encoded = try JSONEncoder().encode(item)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "sourceApplication")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(ClipboardItem.self, from: legacyData)
+        XCTAssertNil(decoded.sourceApplication)
+    }
+
     func testContentLabelsUseEnglishCopy() {
         let textItem = ClipboardItem(
             fingerprint: "text",
@@ -209,6 +227,70 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(item.matchesSearch("quarterly"))
         XCTAssertTrue(item.matchesSearch("REVENUE"))
         XCTAssertFalse(item.matchesSearch("invoice"))
+    }
+
+    func testClipboardHistoryFiltersMatchSourceTypeDatePinAndOCR() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let source = ClipboardSourceApplication(
+            bundleIdentifier: "com.example.editor",
+            name: "Editor"
+        )
+        let item = ClipboardItem(
+            createdAt: now.addingTimeInterval(-2 * 24 * 60 * 60),
+            fingerprint: "filter-item",
+            text: "A saved note",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            ocrText: "Recognized text",
+            files: [],
+            isPinned: true,
+            sourceApplication: source
+        )
+
+        XCTAssertTrue(item.matches(
+            ClipboardHistoryFilter(
+                type: .text,
+                date: .lastSevenDays,
+                sourceAppBundleIdentifier: source.bundleIdentifier,
+                pinnedOnly: true,
+                hasOCR: true
+            ),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(type: .image),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(date: .today),
+            now: now
+        ))
+        XCTAssertFalse(item.matches(
+            ClipboardHistoryFilter(sourceAppBundleIdentifier: "com.example.other"),
+            now: now
+        ))
+        XCTAssertTrue(item.matches(
+            ClipboardHistoryFilter(hasOCR: true),
+            now: now
+        ))
+    }
+
+    @MainActor
+    func testStorePersistsSourceApplicationMetadata() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let source = ClipboardSourceApplication(
+            bundleIdentifier: "com.example.browser",
+            name: "Example Browser"
+        )
+        let store = ClipboardStore(directoryURL: directory)
+        store.ingest(
+            ClipboardSnapshot(text: "source item", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []),
+            sourceApplication: source
+        )
+
+        let reloaded = ClipboardStore(directoryURL: directory)
+        XCTAssertEqual(reloaded.items.first?.sourceApplication, source)
     }
 
     func testLegacyItemDecodesWithoutOCRText() throws {

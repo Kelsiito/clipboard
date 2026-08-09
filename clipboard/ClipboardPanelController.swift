@@ -504,6 +504,11 @@ struct ClipboardPanelView: View {
 
     @State private var selectedID: UUID?
     @State private var searchQuery = ""
+    @State private var typeFilter: ClipboardHistoryTypeFilter = .all
+    @State private var dateFilter: ClipboardHistoryDateFilter = .allTime
+    @State private var sourceAppFilter: String?
+    @State private var pinnedOnly = false
+    @State private var hasOCR = false
     @State private var isPresented = false
     @FocusState private var isSearchFocused: Bool
 
@@ -511,7 +516,9 @@ struct ClipboardPanelView: View {
 
     var body: some View {
         let allItems = store.items
-        let items = allItems.filter { $0.matchesSearch(searchQuery) }
+        let items = allItems.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         let panelShape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
         VStack(alignment: .leading, spacing: 8) {
@@ -673,6 +680,8 @@ struct ClipboardPanelView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
             }
+
+            filterMenu
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -682,6 +691,86 @@ struct ClipboardPanelView: View {
                 .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var historyFilter: ClipboardHistoryFilter {
+        ClipboardHistoryFilter(
+            type: typeFilter,
+            date: dateFilter,
+            sourceAppBundleIdentifier: sourceAppFilter,
+            pinnedOnly: pinnedOnly,
+            hasOCR: hasOCR
+        )
+    }
+
+    private var sourceApplications: [ClipboardSourceApplication] {
+        Array(Set(store.items.compactMap(\.sourceApplication)))
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            }
+    }
+
+    private var filterMenu: some View {
+        Menu {
+            Picker("Type", selection: $typeFilter) {
+                ForEach(ClipboardHistoryTypeFilter.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+
+            Picker("Date", selection: $dateFilter) {
+                ForEach(ClipboardHistoryDateFilter.allCases) { option in
+                    Text(option.title).tag(option)
+                }
+            }
+
+            if !sourceApplications.isEmpty {
+                Picker("Source app", selection: $sourceAppFilter) {
+                    Text("All apps").tag(Optional<String>.none)
+                    ForEach(sourceApplications) { application in
+                        Text(application.displayName)
+                            .tag(Optional(application.bundleIdentifier))
+                    }
+                }
+            }
+
+            Divider()
+
+            Toggle("Pinned only", isOn: $pinnedOnly)
+            Toggle("Has OCR text", isOn: $hasOCR)
+
+            if !historyFilter.isDefault {
+                Divider()
+                Button("Reset filters") {
+                    resetFilters()
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: historyFilter.isDefault
+                    ? "line.3.horizontal.decrease.circle"
+                    : "line.3.horizontal.decrease.circle.fill")
+                if historyFilter.activeFilterCount > 0 {
+                    Text("\(historyFilter.activeFilterCount)")
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                }
+            }
+            .foregroundStyle(historyFilter.isDefault ? Color.secondary : Color.accentColor)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+        .help("Filter history")
+        .accessibilityLabel("Filter history")
+    }
+
+    private func resetFilters() {
+        typeFilter = .all
+        dateFilter = .allTime
+        sourceAppFilter = nil
+        pinnedOnly = false
+        hasOCR = false
     }
 
     @ViewBuilder
@@ -707,7 +796,9 @@ struct ClipboardPanelView: View {
     }
 
     private func moveSelection(_ direction: MoveCommandDirection) {
-        let items = store.items.filter { $0.matchesSearch(searchQuery) }
+        let items = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard !items.isEmpty else { return }
         let currentIndex = selectedID.flatMap { id in items.firstIndex { $0.id == id } } ?? 0
         let nextIndex: Int
@@ -720,7 +811,9 @@ struct ClipboardPanelView: View {
     }
 
     private func submitSelection() {
-        let items = store.items.filter { $0.matchesSearch(searchQuery) }
+        let items = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard let selectedID, let item = items.first(where: { $0.id == selectedID }) else { return }
         onPaste(item, .original)
     }
@@ -751,7 +844,9 @@ struct ClipboardPanelView: View {
               (1...9).contains(number)
         else { return .ignored }
 
-        let visibleItems = store.items.filter { $0.matchesSearch(searchQuery) }
+        let visibleItems = store.items.filter {
+            $0.matchesSearch(searchQuery) && $0.matches(historyFilter)
+        }
         guard visibleItems.indices.contains(number - 1) else { return .handled }
         onPaste(visibleItems[number - 1], .original)
         return .handled
@@ -789,7 +884,7 @@ private struct ClipboardRow: View {
                 Text(item.preview)
                     .lineLimit(2)
                     .font(.body)
-                Text(item.kindLabel)
+                Text(metadataLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -869,6 +964,12 @@ private struct ClipboardRow: View {
         if item.hasFiles { return "doc.on.doc" }
         if item.hasImage { return "photo" }
         return "text.alignleft"
+    }
+
+    private var metadataLabel: String {
+        [item.kindLabel, item.sourceApplicationLabel]
+            .compactMap { $0 }
+            .joined(separator: " • ")
     }
 }
 

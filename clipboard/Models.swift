@@ -11,6 +11,106 @@ enum ClipboardContentKind: String, Codable {
     case mixed
 }
 
+struct ClipboardSourceApplication: Codable, Equatable, Hashable, Identifiable {
+    let bundleIdentifier: String
+    let name: String
+
+    var id: String { bundleIdentifier }
+
+    init(bundleIdentifier: String, name: String) {
+        self.bundleIdentifier = bundleIdentifier
+        self.name = name
+    }
+
+    var displayName: String {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedName.isEmpty { return trimmedName }
+        return bundleIdentifier
+    }
+}
+
+enum ClipboardHistoryTypeFilter: String, CaseIterable, Hashable, Identifiable {
+    case all
+    case text
+    case image
+    case gif
+    case files
+    case mixed
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: return "All types"
+        case .text: return "Text"
+        case .image: return "Images"
+        case .gif: return "GIFs"
+        case .files: return "Files"
+        case .mixed: return "Mixed"
+        }
+    }
+
+    func matches(_ item: ClipboardItem) -> Bool {
+        switch self {
+        case .all: return true
+        case .text: return item.kind == .text
+        case .image: return item.kind == .image && !item.isGIF
+        case .gif: return item.isGIF
+        case .files: return item.kind == .files
+        case .mixed: return item.kind == .mixed
+        }
+    }
+}
+
+enum ClipboardHistoryDateFilter: String, CaseIterable, Hashable, Identifiable {
+    case allTime
+    case today
+    case lastSevenDays
+    case lastThirtyDays
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .allTime: return "All time"
+        case .today: return "Today"
+        case .lastSevenDays: return "Last 7 days"
+        case .lastThirtyDays: return "Last 30 days"
+        }
+    }
+
+    func includes(_ date: Date, now: Date, calendar: Calendar = .current) -> Bool {
+        switch self {
+        case .allTime:
+            return true
+        case .today:
+            return date >= calendar.startOfDay(for: now)
+        case .lastSevenDays:
+            return date >= now.addingTimeInterval(-7 * 24 * 60 * 60)
+        case .lastThirtyDays:
+            return date >= now.addingTimeInterval(-30 * 24 * 60 * 60)
+        }
+    }
+}
+
+struct ClipboardHistoryFilter: Equatable {
+    var type: ClipboardHistoryTypeFilter = .all
+    var date: ClipboardHistoryDateFilter = .allTime
+    var sourceAppBundleIdentifier: String?
+    var pinnedOnly = false
+    var hasOCR = false
+
+    var activeFilterCount: Int {
+        (type == .all ? 0 : 1)
+            + (date == .allTime ? 0 : 1)
+            + (sourceAppBundleIdentifier == nil ? 0 : 1)
+            + (pinnedOnly ? 1 : 0)
+            + (hasOCR ? 1 : 0)
+    }
+
+    var isDefault: Bool { activeFilterCount == 0 }
+}
+
 enum ClipboardRetention: String, CaseIterable, Codable, Hashable, Identifiable {
     case never
     case oneDay
@@ -121,9 +221,10 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var ocrText: String?
     var files: [StoredFileReference]
     var isPinned: Bool
+    var sourceApplication: ClipboardSourceApplication?
 
     private enum CodingKeys: String, CodingKey {
-        case id, createdAt, fingerprint, text, richTextData, imageData, imageType, ocrText, files, isPinned
+        case id, createdAt, fingerprint, text, richTextData, imageData, imageType, ocrText, files, isPinned, sourceApplication
     }
 
     var hasText: Bool { text?.isEmpty == false }
@@ -132,6 +233,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
     var canExtractText: Bool { hasImage && !isGIF }
     var hasFiles: Bool { !files.isEmpty }
     var isEmpty: Bool { !hasText && !hasImage && !hasFiles }
+    var sourceApplicationLabel: String? { sourceApplication?.displayName }
 
     var kind: ClipboardContentKind {
         let count = [hasText, hasImage, hasFiles].filter { $0 }.count
@@ -173,6 +275,16 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         return searchableText.searchNormalized.localizedStandardContains(normalizedQuery)
     }
 
+    func matches(_ filter: ClipboardHistoryFilter, now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard filter.type.matches(self),
+              filter.date.includes(createdAt, now: now, calendar: calendar),
+              filter.sourceAppBundleIdentifier == nil || sourceApplication?.bundleIdentifier == filter.sourceAppBundleIdentifier,
+              !filter.pinnedOnly || isPinned,
+              !filter.hasOCR || ocrText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        else { return false }
+        return true
+    }
+
     init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
@@ -183,7 +295,8 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         imageType: String?,
         ocrText: String? = nil,
         files: [StoredFileReference],
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        sourceApplication: ClipboardSourceApplication? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -195,6 +308,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         self.ocrText = ocrText
         self.files = files
         self.isPinned = isPinned
+        self.sourceApplication = sourceApplication
     }
 
     init(from decoder: Decoder) throws {
@@ -209,6 +323,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         ocrText = try container.decodeIfPresent(String.self, forKey: .ocrText)
         files = try container.decode([StoredFileReference].self, forKey: .files)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        sourceApplication = try container.decodeIfPresent(ClipboardSourceApplication.self, forKey: .sourceApplication)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -223,6 +338,7 @@ struct ClipboardItem: Codable, Equatable, Identifiable {
         try container.encodeIfPresent(ocrText, forKey: .ocrText)
         try container.encode(files, forKey: .files)
         try container.encode(isPinned, forKey: .isPinned)
+        try container.encodeIfPresent(sourceApplication, forKey: .sourceApplication)
     }
 }
 

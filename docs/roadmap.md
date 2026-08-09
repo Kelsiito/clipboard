@@ -65,6 +65,7 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Extract recognized text from a static image, copy it as plain text, and add the result to history.
 - Export the latest GIF or an individual GIF history item to a local `.gif` file.
 - Save text history items as persistent, editable Favorites/Snippets.
+- Persist source application metadata for new captures and filter history by type, date, source app, pinned state, or OCR availability.
 
 ## Distribution and documentation track
 
@@ -85,6 +86,8 @@ These tasks are independent from feature implementation and do not block v1.1 co
 
 These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
+- Permanent local Library with unlimited favorites/snippets, collections, tags, and titles.
+- At-rest history encryption using a Keychain-managed key, with an optional lock/Touch ID flow.
 - Signed and notarized distribution.
 - Optional App Store packaging, subject to the required sandbox and permission model.
 - Additional accessibility and target-app compatibility improvements.

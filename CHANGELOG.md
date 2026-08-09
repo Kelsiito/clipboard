@@ -24,6 +24,7 @@ This file records user-visible changes. The project currently publishes source r
 - Local, asynchronous OCR indexing for copied static images and screenshots.
 - On-demand `Extract Text & Copy` for static image history items, using the existing local Vision OCR result and adding the extracted plain text to history.
 - Persistent text Favorites/Snippets with search, editable titles/content, paste, and deletion.
+- Source application metadata for new captures, with compact local filters by type, date, source app, pinned state, and OCR availability.
 
 ### Current feature set
 
@@ -36,6 +37,7 @@ This file records user-visible changes. The project currently publishes source r
 - GIF export uses the native save panel and never duplicates the history item.
 - Quick Look previews use temporary app-owned copies for image/text payloads and never alter original files.
 - OCR text is persisted as local search metadata and never leaves the Mac.
+- Source application metadata is persisted locally and remains optional for backward compatibility with older history files.
 - OCR extraction copies plain text locally and does not upload image data or recognized text.
 - Favorites/Snippets are persisted separately from history and are not removed by history retention or clearing.
 

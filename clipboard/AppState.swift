@@ -309,9 +309,9 @@ final class AppState: ObservableObject {
             self?.pasteNextStackItem()
         }
         monitor.ignoredBundleIdentifiers = savedIgnoredBundleIdentifiers
-        monitor.onSnapshot = { [weak self] snapshot, _ in
+        monitor.onSnapshot = { [weak self] snapshot, sourceApplication in
             guard let self else { return }
-            self.store.ingest(snapshot)
+            self.store.ingest(snapshot, sourceApplication: sourceApplication)
             guard self.isCapturingStack,
                   let item = self.store.items.first(where: { $0.fingerprint == snapshot.fingerprint })
             else { return }
@@ -433,11 +433,11 @@ final class AppState: ObservableObject {
                 return
             }
 
-            self.copyExtractedText(recognizedText)
+            self.copyExtractedText(recognizedText, sourceApplication: item.sourceApplication)
         }
     }
 
-    private func copyExtractedText(_ text: String) {
+    private func copyExtractedText(_ text: String, sourceApplication: ClipboardSourceApplication? = nil) {
         let pasteboard = NSPasteboard.general
         monitor.suppressCapture()
         pasteboard.clearContents()
@@ -452,7 +452,7 @@ final class AppState: ObservableObject {
             imageData: nil,
             imageType: nil,
             fileURLs: []
-        ))
+        ), sourceApplication: sourceApplication)
         statusMessage = "Extracted text copied to the clipboard."
     }
 
