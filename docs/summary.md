@@ -18,7 +18,7 @@
 - Clipboard Stack start and paste-next hotkeys are optional, persisted only after the user configures them, and can be cleared from Settings.
 - Quick Look is available from each picker row and context menu for text, images, animated GIFs, and existing local file references.
 - GIFs can be exported through the menu bar or an individual GIF history row using the native save panel; export does not duplicate history.
-- Text history items can be saved as persistent Favorites/Snippets, then searched, edited, pasted, or deleted independently of history cleanup.
+- Text history items can be saved to a permanent local Library, then titled, organized into collections, tagged, searched, filtered, edited, pasted, or deleted independently of history cleanup.
 - Static images are OCR-indexed asynchronously with Apple's Vision framework; recognized text is persisted locally and participates in search.
 - Static image rows expose `Extract Text & Copy`, which copies locally recognized text as plain text and adds it to history; animated GIFs are excluded.
 - New captures retain the source application bundle ID and display name when available. The history picker can filter by content type, date range, source app, pinned state, and OCR availability.
@@ -33,6 +33,7 @@
 - Ignored applications and paused capture do not enter history and do not consume `Ignore Next Copy`.
 - Retention cleanup preserves pinned items and never deletes original files.
 - Source application metadata is optional and backward-compatible; older history entries remain usable without it.
+- Library collection and tag metadata is optional and backward-compatible; existing Favorites load as ungrouped items.
 - The stack is session-only and references existing history item IDs rather than duplicating payloads.
 - There is no cloud sync, account, backend, analytics, telemetry, or network service.
 - Clearing history removes only app-owned history.
@@ -43,7 +44,7 @@
 - `AppState.swift`: settings, global hotkey orchestration, target-app capture, Accessibility status, and paste flow.
 - `PasteboardMonitor.swift`: pasteboard polling, source-application filtering, pause state, and transient-content filtering.
 - `ClipboardStore.swift`: local persistence, source metadata, deduplication, history limits, pin ordering, deletion, and retention cleanup.
-- `Models.swift`: Codable clipboard, source metadata, filter, file-reference, hotkey, retention, and pause models.
+- `Models.swift`: Codable clipboard, Library metadata, source metadata, filter, file-reference, hotkey, retention, and pause models.
 - `GlobalHotKey.swift`: Carbon global hotkey registration.
 - `ClipboardPanelController.swift`: floating picker, placement, animations, keyboard navigation, and rows.
 - `QuickLookPreview.swift`: native Quick Look data source with temporary preview copies and cleanup.
@@ -68,7 +69,7 @@ xcodebuild -project clipboard.xcodeproj -scheme clipboard -destination 'platform
 git diff --check
 ```
 
-The XCTest suite covers persistence, images, file bookmarks, source metadata, type/date/source/OCR filters, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, empty and legacy data, hotkey defaults, and panel placement geometry. The GitHub Actions workflow runs the test and build commands on macOS for pushes to `main` and pull requests.
+The XCTest suite covers persistence, images, file bookmarks, source metadata, type/date/source/OCR filters, Library collections/tags and legacy decoding, deduplication, limits, pinning, deletion, clear-unpinned behavior, search, ignore-next-copy behavior, empty and legacy data, hotkey defaults, and panel placement geometry. The GitHub Actions workflow runs the test and build commands on macOS for pushes to `main` and pull requests.
 
 ## Manual QA checklist
 
@@ -83,7 +84,7 @@ The XCTest suite covers persistence, images, file bookmarks, source metadata, ty
 - Clipboard Stack capture, finish/cancel controls, ordered consumption, and manual paste fallback.
 - Quick Look from the row eye button and context menu for text, images, GIFs, and files; verify the panel closes and temporary previews are removed.
 - Save the latest GIF from the menu bar and an individual GIF from its row; verify `.gif` extension handling, file contents, and no duplicate history item.
-- Save a text history item as a Favorite, create a new Favorite, edit its title/content, search it, paste it, delete it, and verify it survives history clearing and restart.
+- Save a text history item to the Library, create a new item, edit its title/content/collection/tags, search and filter it, paste it, delete it, and verify it survives history clearing and restart.
 - Copy from two different apps, open the picker, and verify the source-app, type, date, pinned, and OCR filters return the expected rows; verify Reset filters restores the full history.
 - Accessibility granted and denied.
 - Standard text-editor caret positioning.

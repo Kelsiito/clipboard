@@ -347,17 +347,52 @@ struct ClipboardSnippet: Codable, Equatable, Identifiable {
     var createdAt: Date
     var title: String
     var text: String
+    var collection: String?
+    var tags: [String]
 
     init(
         id: UUID = UUID(),
         createdAt: Date = Date(),
         title: String,
-        text: String
+        text: String,
+        collection: String? = nil,
+        tags: [String] = []
     ) {
         self.id = id
         self.createdAt = createdAt
         self.title = title
         self.text = text
+        self.collection = Self.normalizedCollection(collection)
+        self.tags = Self.normalizedTags(tags)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt
+        case title
+        case text
+        case collection
+        case tags
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        title = try container.decode(String.self, forKey: .title)
+        text = try container.decode(String.self, forKey: .text)
+        collection = Self.normalizedCollection(try container.decodeIfPresent(String.self, forKey: .collection))
+        tags = Self.normalizedTags(try container.decodeIfPresent([String].self, forKey: .tags) ?? [])
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(title, forKey: .title)
+        try container.encode(text, forKey: .text)
+        try container.encodeIfPresent(collection, forKey: .collection)
+        try container.encode(tags, forKey: .tags)
     }
 
     static func suggestedTitle(for text: String) -> String {
@@ -368,6 +403,44 @@ struct ClipboardSnippet: Codable, Equatable, Identifiable {
         let trimmed = firstLine.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "Favorite" }
         return String(trimmed.prefix(48))
+    }
+
+    static func normalizedCollection(_ collection: String?) -> String? {
+        guard let collection else { return nil }
+        let trimmed = collection.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : String(trimmed.prefix(64))
+    }
+
+    static func normalizedTags(_ tags: [String]) -> [String] {
+        var normalized: [String] = []
+        var seen = Set<String>()
+
+        for tag in tags {
+            let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let value = String(trimmed.prefix(32))
+            let key = value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            guard seen.insert(key).inserted else { continue }
+            normalized.append(value)
+        }
+
+        return Array(normalized.prefix(12))
+    }
+
+    func matchesLibrary(
+        query: String,
+        collection selectedCollection: String?,
+        tag selectedTag: String?
+    ) -> Bool {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matchesQuery = trimmedQuery.isEmpty
+            || title.localizedStandardContains(trimmedQuery)
+            || text.localizedStandardContains(trimmedQuery)
+            || (collection?.localizedStandardContains(trimmedQuery) == true)
+            || tags.contains(where: { $0.localizedStandardContains(trimmedQuery) })
+        let matchesCollection = selectedCollection.map { collection == $0 } ?? true
+        let matchesTag = selectedTag.map { tags.contains($0) } ?? true
+        return matchesQuery && matchesCollection && matchesTag
     }
 }
 

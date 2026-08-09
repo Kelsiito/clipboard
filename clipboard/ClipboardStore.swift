@@ -220,7 +220,13 @@ final class SnippetStore: ObservableObject {
     }
 
     @discardableResult
-    func add(title: String? = nil, text: String, now: Date = Date()) -> ClipboardSnippet? {
+    func add(
+        title: String? = nil,
+        text: String,
+        collection: String? = nil,
+        tags: [String] = [],
+        now: Date = Date()
+    ) -> ClipboardSnippet? {
         let normalizedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedText.isEmpty else { return nil }
         if let existing = snippets.first(where: { $0.text == normalizedText }) {
@@ -233,7 +239,9 @@ final class SnippetStore: ObservableObject {
             title: normalizedTitle?.isEmpty == false
                 ? normalizedTitle!
                 : ClipboardSnippet.suggestedTitle(for: normalizedText),
-            text: normalizedText
+            text: normalizedText,
+            collection: collection,
+            tags: tags
         )
         snippets.insert(snippet, at: 0)
         save()
@@ -253,6 +261,8 @@ final class SnippetStore: ObservableObject {
             updated.title = ClipboardSnippet.suggestedTitle(for: normalizedText)
         }
         updated.text = normalizedText
+        updated.collection = ClipboardSnippet.normalizedCollection(snippet.collection)
+        updated.tags = ClipboardSnippet.normalizedTags(snippet.tags)
         snippets[index] = updated
         sortSnippets()
         save()
@@ -264,7 +274,13 @@ final class SnippetStore: ObservableObject {
         if snippets.contains(where: { $0.id == snippet.id }) {
             return update(snippet)
         }
-        return add(title: snippet.title, text: snippet.text, now: snippet.createdAt) != nil
+        return add(
+            title: snippet.title,
+            text: snippet.text,
+            collection: snippet.collection,
+            tags: snippet.tags,
+            now: snippet.createdAt
+        ) != nil
     }
 
     @discardableResult

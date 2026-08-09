@@ -562,7 +562,7 @@ struct ClipboardPanelView: View {
                         .contextMenu {
                             Button(item.isPinned ? "Unpin" : "Pin") { onTogglePin(item) }
                             if item.hasText {
-                                Button("Save as Favorite…") { onSaveFavorite(item) }
+                                Button("Save to Library…") { onSaveFavorite(item) }
                             }
                             if item.canExtractText {
                                 Button("Edit image") { onEdit(item) }
@@ -1021,12 +1021,30 @@ struct FavoritesView: View {
 
     @State private var searchQuery = ""
     @State private var editingSnippet: ClipboardSnippet?
+    @State private var selectedCollection: String?
+    @State private var selectedTag: String?
+
+    private var collections: [String] {
+        Array(Set(store.snippets.compactMap(\.collection)))
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    private var tags: [String] {
+        Array(Set(store.snippets.flatMap(\.tags)))
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    private var hasMetadataFilter: Bool {
+        selectedCollection != nil || selectedTag != nil
+    }
 
     private var visibleSnippets: [ClipboardSnippet] {
-        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return store.snippets }
-        return store.snippets.filter {
-            $0.title.localizedStandardContains(query) || $0.text.localizedStandardContains(query)
+        store.snippets.filter {
+            $0.matchesLibrary(
+                query: searchQuery,
+                collection: selectedCollection,
+                tag: selectedTag
+            )
         }
     }
 
@@ -1035,10 +1053,12 @@ struct FavoritesView: View {
             HStack(spacing: 10) {
                 Image(systemName: "star.fill")
                     .foregroundStyle(.yellow)
-                Text("Favorites")
+                Text("Library")
                     .font(.title3.weight(.semibold))
                 Spacer()
-                Text("\(store.snippets.count)")
+                Text(hasMetadataFilter || !searchQuery.isEmpty
+                     ? "\(visibleSnippets.count)/\(store.snippets.count)"
+                     : "\(store.snippets.count)")
                     .foregroundStyle(.secondary)
                     .font(.caption)
                 Button(action: { editingSnippet = ClipboardSnippet(title: "", text: "") }) {
@@ -1060,7 +1080,7 @@ struct FavoritesView: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("Search favorites", text: $searchQuery)
+                TextField("Search library", text: $searchQuery)
                     .textFieldStyle(.plain)
                 if !searchQuery.isEmpty {
                     Button {
@@ -1072,6 +1092,61 @@ struct FavoritesView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Clear search")
                 }
+
+                Menu {
+                    Menu("Collection") {
+                        Button {
+                            selectedCollection = nil
+                        } label: {
+                            Label("All collections", systemImage: selectedCollection == nil ? "checkmark" : "folder")
+                        }
+                        if !collections.isEmpty {
+                            Divider()
+                            ForEach(collections, id: \.self) { collection in
+                                Button {
+                                    selectedCollection = collection
+                                } label: {
+                                    Label(collection, systemImage: selectedCollection == collection ? "checkmark" : "folder")
+                                }
+                            }
+                        }
+                    }
+
+                    Menu("Tag") {
+                        Button {
+                            selectedTag = nil
+                        } label: {
+                            Label("All tags", systemImage: selectedTag == nil ? "checkmark" : "tag")
+                        }
+                        if !tags.isEmpty {
+                            Divider()
+                            ForEach(tags, id: \.self) { tag in
+                                Button {
+                                    selectedTag = tag
+                                } label: {
+                                    Label(tag, systemImage: selectedTag == tag ? "checkmark" : "tag")
+                                }
+                            }
+                        }
+                    }
+
+                    if hasMetadataFilter {
+                        Divider()
+                        Button("Reset filters") {
+                            selectedCollection = nil
+                            selectedTag = nil
+                        }
+                    }
+                } label: {
+                    Image(systemName: hasMetadataFilter
+                          ? "line.3.horizontal.decrease.circle.fill"
+                          : "line.3.horizontal.decrease.circle")
+                        .foregroundStyle(hasMetadataFilter ? Color.cyan : Color.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Filter library")
+                .accessibilityLabel("Filter library")
             }
             .padding(.horizontal, 10)
             .frame(height: 32)
@@ -1079,10 +1154,10 @@ struct FavoritesView: View {
 
             if visibleSnippets.isEmpty {
                 ContentUnavailableView(
-                    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "No favorites yet"
+                    searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasMetadataFilter
+                        ? "No library items yet"
                         : "No matches",
-                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    systemImage: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasMetadataFilter
                         ? "star"
                         : "magnifyingglass",
                     description: Text("Save a text item from history or create one with +.")
@@ -1147,6 +1222,21 @@ private struct FavoriteRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+
+                if snippet.collection != nil || !snippet.tags.isEmpty {
+                    HStack(spacing: 8) {
+                        if let collection = snippet.collection {
+                            Label(collection, systemImage: "folder")
+                                .lineLimit(1)
+                        }
+                        ForEach(snippet.tags.prefix(3), id: \.self) { tag in
+                            Text("#\(tag)")
+                                .lineLimit(1)
+                        }
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
             }
 
             Spacer(minLength: 0)
@@ -1193,6 +1283,8 @@ private struct SnippetEditorView: View {
 
     @State private var title: String
     @State private var text: String
+    @State private var collection: String
+    @State private var tagsText: String
 
     init(
         snippet: ClipboardSnippet,
@@ -1204,6 +1296,8 @@ private struct SnippetEditorView: View {
         self.onCancel = onCancel
         _title = State(initialValue: snippet.title)
         _text = State(initialValue: snippet.text)
+        _collection = State(initialValue: snippet.collection ?? "")
+        _tagsText = State(initialValue: snippet.tags.joined(separator: ", "))
     }
 
     private var canSave: Bool {
@@ -1212,10 +1306,16 @@ private struct SnippetEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(snippet.text.isEmpty ? "New Favorite" : "Edit Favorite")
+            Text(snippet.text.isEmpty ? "New Library Item" : "Edit Library Item")
                 .font(.title3.weight(.semibold))
 
             TextField("Title", text: $title)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("Collection (optional)", text: $collection)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("Tags, separated by commas", text: $tagsText)
                 .textFieldStyle(.roundedBorder)
 
             TextEditor(text: $text)
@@ -1236,7 +1336,9 @@ private struct SnippetEditorView: View {
                         id: snippet.id,
                         createdAt: snippet.createdAt,
                         title: title,
-                        text: text
+                        text: text,
+                        collection: collection,
+                        tags: tagsText.split(separator: ",").map(String.init)
                     ))
                 }
                 .keyboardShortcut(.defaultAction)
@@ -1244,6 +1346,6 @@ private struct SnippetEditorView: View {
             }
         }
         .padding(20)
-        .frame(width: 420, height: 280)
+        .frame(width: 440, height: 370)
     }
 }
