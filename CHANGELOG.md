@@ -25,6 +25,8 @@ This file records user-visible changes. The project currently publishes source r
 - On-demand `Extract Text & Copy` for static image history items, using the existing local Vision OCR result and adding the extracted plain text to history.
 - Persistent text Favorites/Snippets with search, editable titles/content, paste, and deletion.
 - A permanent local Library for text snippets, with optional collections, tags, metadata search, and filters.
+- Authenticated AES-GCM encryption for History and Library files with a device-only Keychain-managed key.
+- Optional Touch ID or Mac-password authentication before opening History or the Library.
 - Source application metadata for new captures, with compact local filters by type, date, source app, pinned state, and OCR availability.
 
 ### Current feature set

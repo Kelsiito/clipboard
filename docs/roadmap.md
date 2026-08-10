@@ -21,6 +21,8 @@ The public v1 implementation is complete and available in the [`Kelsiito/clipboa
 - Native area screen recording converted locally to animated GIF and copied to the pasteboard/history.
 - The latest GIF or an individual GIF history item can be exported to a local `.gif` file.
 - Permanent local text Library with titles, collections, tags, metadata search, filtering, editing, paste, and deletion.
+- Authenticated local encryption for History and Library files with a device-only Keychain-managed key.
+- Optional Touch ID or Mac-password authentication before opening History and the Library.
 - Local JSON persistence under `~/Library/Application Support/clipboard/`.
 - SHA-256 deduplication, a configurable 10–200 item limit, and up to three pinned items.
 - Compact picker with scrolling, keyboard navigation, close/outside-click dismissal, and smooth entrance animation.
@@ -67,6 +69,8 @@ The first v1.3 slice is Clipboard Stack / sequential paste:
 - Save text history items to the permanent, editable local Library.
 - Persist source application metadata for new captures and filter history by type, date, source app, pinned state, or OCR availability.
 - Organize unlimited persistent text Library items with optional collections and tags, searchable and filterable locally.
+- Encrypt persisted History and Library payloads with AES-GCM, migrate legacy plaintext files, and fail safely without overwriting unreadable data.
+- Optionally protect private views with macOS device-owner authentication.
 
 ## Distribution and documentation track
 
@@ -87,7 +91,6 @@ These tasks are independent from feature implementation and do not block v1.1 co
 
 These follow the v1.3 Clipboard Stack slice and are intentionally not committed to a release date:
 
-- At-rest history encryption using a Keychain-managed key, with an optional lock/Touch ID flow.
 - Signed and notarized distribution.
 - Optional App Store packaging, subject to the required sandbox and permission model.
 - Additional accessibility and target-app compatibility improvements.
@@ -99,6 +102,7 @@ These follow the v1.3 Clipboard Stack slice and are intentionally not committed 
 - File bookmarks may become stale after a file is moved, deleted, or made inaccessible.
 - Source builds are currently unsigned and may trigger macOS trust warnings.
 - Clipboard history is sensitive local data and should be treated accordingly.
+- Removing the device-only Keychain key makes encrypted History and Library files unrecoverable.
 
 ## Definition of done for future changes
 

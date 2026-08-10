@@ -199,6 +199,59 @@ struct SettingsView: View {
                     }
                 }
 
+                settingsSection("Local security") {
+                    settingsCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Label("Encrypted storage", systemImage: "lock.shield.fill")
+                                Spacer()
+                                Text("Active")
+                                    .foregroundStyle(.green)
+                            }
+
+                            Text("History and Library files are encrypted with AES-GCM. The key is stored in this Mac's Keychain and is not synced or uploaded.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Divider()
+
+                            Toggle(isOn: Binding(
+                                get: { appState.requireAuthenticationForPrivateViews },
+                                set: { appState.setPrivateViewAuthenticationEnabled($0) }
+                            )) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Protect History and Library")
+                                    Text("Require Touch ID or the Mac password each time either private view is opened.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("Clipboard capture continues in the background.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .toggleStyle(.switch)
+                            .disabled(
+                                !appState.isDeviceAuthenticationAvailable
+                                && !appState.requireAuthenticationForPrivateViews
+                            )
+
+                            if !appState.isDeviceAuthenticationAvailable {
+                                Text("Device authentication is unavailable on this Mac.")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+
+                            if let storageError = appState.store.persistenceErrorMessage
+                                ?? appState.snippetStore.persistenceErrorMessage {
+                                Label(storageError, systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                }
+
                 settingsSection("Startup") {
                     settingsCard {
                         VStack(alignment: .leading, spacing: 8) {
