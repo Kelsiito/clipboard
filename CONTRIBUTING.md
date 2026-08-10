@@ -69,6 +69,8 @@ For changes to the picker or settings, also run the relevant manual checks:
 - enable and disable Launch at Login, then verify the setting survives relaunch;
 - verify close button, click-outside dismissal, scrolling, and pinning;
 - verify Settings, Clear History, Clear unpinned, Ignore Next Copy, Quit, and the menu-bar item;
+- verify legacy plaintext fixtures migrate to encrypted files, relaunch preserves their contents, and no synthetic secret remains visible in the stored bytes;
+- enable private-view authentication, open History and the Library with successful authentication, cancel once to verify they stay closed, then disable the setting;
 - test with Accessibility denied and granted;
 - test target positioning in a standard text editor and in an app that exposes only a window-level accessibility element.
 
@@ -79,6 +81,7 @@ Do not use real sensitive clipboard content for screenshots or automated fixture
 - Prefer Apple frameworks and the existing SwiftUI/AppKit architecture.
 - Keep state local and explicit; avoid introducing dependencies for small features.
 - Preserve the existing data format or add backward-compatible decoding when changing persisted models.
+- Never weaken authenticated encryption, expose the storage key, or overwrite a file after a key/decryption failure.
 - Do not delete original files when changing file-history behavior.
 - Keep Accessibility requests narrow and explain user-visible fallbacks.
 - Add or update focused XCTest coverage for persistence, filtering, deduplication, limits, and geometry changes.

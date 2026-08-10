@@ -4,6 +4,10 @@ import XCTest
 @testable import clipboard
 
 final class ClipboardTests: XCTestCase {
+    private var testCipher: LocalDataCipher {
+        LocalDataCipher { Data(repeating: 0xA5, count: 32) }
+    }
+
     func testSnapshotFingerprintIsStable() {
         let first = ClipboardSnapshot(text: "hello", richTextData: nil, imageData: nil, imageType: nil, fileURLs: [])
         let second = ClipboardSnapshot(text: "hello", richTextData: nil, imageData: nil, imageType: nil, fileURLs: [])
@@ -19,7 +23,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testStoreDeduplicatesAndPrunes() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory, limit: 10)
+        let store = ClipboardStore(directoryURL: directory, limit: 10, cipher: testCipher)
 
         for index in 0..<12 {
             store.ingest(ClipboardSnapshot(text: "item-\(index)", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
@@ -31,14 +35,14 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(store.items.count, 10)
         XCTAssertEqual(store.items.first?.text, "item-5")
 
-        let reloaded = ClipboardStore(directoryURL: directory, limit: 10)
+        let reloaded = ClipboardStore(directoryURL: directory, limit: 10, cipher: testCipher)
         XCTAssertEqual(reloaded.items.first?.text, "item-5")
     }
 
     @MainActor
     func testSnippetStorePersistsUpdatesAndDeletes() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = SnippetStore(directoryURL: directory)
+        let store = SnippetStore(directoryURL: directory, cipher: testCipher)
 
         let snippet = try XCTUnwrap(store.add(text: "  curl https://example.com  "))
         XCTAssertEqual(snippet.title, "curl https://example.com")
@@ -49,7 +53,7 @@ final class ClipboardTests: XCTestCase {
         updated.text = "curl https://example.com/health"
         XCTAssertTrue(store.update(updated))
 
-        let reloaded = SnippetStore(directoryURL: directory)
+        let reloaded = SnippetStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.snippets.first?.title, "Health check")
         XCTAssertEqual(reloaded.snippets.first?.text, "curl https://example.com/health")
         XCTAssertTrue(reloaded.remove(snippet.id))
@@ -59,7 +63,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testSnippetStoreRejectsEmptyTextAndDeduplicates() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = SnippetStore(directoryURL: directory)
+        let store = SnippetStore(directoryURL: directory, cipher: testCipher)
 
         XCTAssertNil(store.add(text: "   \n"))
         let first = store.add(title: "First", text: "same text")
@@ -71,7 +75,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testSnippetStorePersistsCollectionsAndNormalizedTags() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = SnippetStore(directoryURL: directory)
+        let store = SnippetStore(directoryURL: directory, cipher: testCipher)
 
         let snippet = try XCTUnwrap(store.add(
             title: "Deploy command",
@@ -83,7 +87,7 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(snippet.collection, "Work")
         XCTAssertEqual(snippet.tags, ["Shell", "release"])
 
-        let reloaded = SnippetStore(directoryURL: directory)
+        let reloaded = SnippetStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.snippets.first?.collection, "Work")
         XCTAssertEqual(reloaded.snippets.first?.tags, ["Shell", "release"])
     }
@@ -123,10 +127,88 @@ final class ClipboardTests: XCTestCase {
         XCTAssertFalse(snippet.matchesLibrary(query: "", collection: nil, tag: "Swift"))
     }
 
+    func testLocalDataCipherRoundTripsAndAuthenticatesPurpose() throws {
+        let plaintext = Data("private clipboard text".utf8)
+        let sealed = try testCipher.seal(plaintext, purpose: "clipboard-history")
+
+        XCTAssertTrue(testCipher.isEncrypted(sealed))
+        XCTAssertEqual(
+            try testCipher.open(sealed, purpose: "clipboard-history").plaintext,
+            plaintext
+        )
+        XCTAssertThrowsError(try testCipher.open(sealed, purpose: "clipboard-library"))
+
+        var tampered = sealed
+        tampered[tampered.index(before: tampered.endIndex)] ^= 0x01
+        XCTAssertThrowsError(try testCipher.open(tampered, purpose: "clipboard-history"))
+    }
+
+    func testLocalDataCipherRecognizesLegacyPlaintext() throws {
+        let plaintext = Data("legacy json".utf8)
+        let opened = try testCipher.open(plaintext, purpose: "clipboard-history")
+
+        XCTAssertFalse(opened.wasEncrypted)
+        XCTAssertEqual(opened.plaintext, plaintext)
+    }
+
+    @MainActor
+    func testHistoryPersistsEncryptedAndReloads() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
+        store.ingest(ClipboardSnapshot(
+            text: "encrypted secret",
+            richTextData: nil,
+            imageData: nil,
+            imageType: nil,
+            fileURLs: []
+        ))
+
+        let storedData = try Data(contentsOf: directory.appendingPathComponent("history.json"))
+        XCTAssertTrue(testCipher.isEncrypted(storedData))
+        XCTAssertFalse(String(decoding: storedData, as: UTF8.self).contains("encrypted secret"))
+
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
+        XCTAssertEqual(reloaded.items.first?.text, "encrypted secret")
+    }
+
+    @MainActor
+    func testLegacyLibraryMigratesToEncryptedStorage() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let legacyData = try encoder.encode([
+            ClipboardSnippet(title: "Legacy", text: "legacy library text")
+        ])
+        let snippetsURL = directory.appendingPathComponent("snippets.json")
+        try legacyData.write(to: snippetsURL)
+
+        let store = SnippetStore(directoryURL: directory, cipher: testCipher)
+
+        XCTAssertEqual(store.snippets.first?.text, "legacy library text")
+        XCTAssertTrue(testCipher.isEncrypted(try Data(contentsOf: snippetsURL)))
+    }
+
+    @MainActor
+    func testDecryptionFailurePreservesEncryptedLibraryFile() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let originalStore = SnippetStore(directoryURL: directory, cipher: testCipher)
+        XCTAssertNotNil(originalStore.add(text: "do not overwrite"))
+        let snippetsURL = directory.appendingPathComponent("snippets.json")
+        let originalData = try Data(contentsOf: snippetsURL)
+        let wrongCipher = LocalDataCipher { Data(repeating: 0x5A, count: 32) }
+
+        let lockedStore = SnippetStore(directoryURL: directory, cipher: wrongCipher)
+        XCTAssertNotNil(lockedStore.persistenceErrorMessage)
+        XCTAssertNotNil(lockedStore.add(text: "memory only"))
+
+        XCTAssertEqual(try Data(contentsOf: snippetsURL), originalData)
+    }
+
     @MainActor
     func testStorePinsMaximumThreeItemsAndPersistsOrder() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
 
         for index in 0..<5 {
             store.ingest(ClipboardSnapshot(text: "item-\(index)", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
@@ -140,7 +222,7 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(store.items.filter(\.isPinned).count, 3)
         XCTAssertTrue(store.items.prefix(3).allSatisfy(\.isPinned))
 
-        let reloaded = ClipboardStore(directoryURL: directory)
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.items.filter(\.isPinned).count, 3)
         XCTAssertTrue(reloaded.items.prefix(3).allSatisfy(\.isPinned))
     }
@@ -338,13 +420,13 @@ final class ClipboardTests: XCTestCase {
             bundleIdentifier: "com.example.browser",
             name: "Example Browser"
         )
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         store.ingest(
             ClipboardSnapshot(text: "source item", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []),
             sourceApplication: source
         )
 
-        let reloaded = ClipboardStore(directoryURL: directory)
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.items.first?.sourceApplication, source)
     }
 
@@ -391,7 +473,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testStoreRemovesSingleItemAndPersistsDeletion() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         store.ingest(ClipboardSnapshot(text: "keep", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
         store.ingest(ClipboardSnapshot(text: "remove", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
 
@@ -399,14 +481,14 @@ final class ClipboardTests: XCTestCase {
         XCTAssertTrue(store.remove(itemToRemove.id))
         XCTAssertFalse(store.items.contains(where: { $0.id == itemToRemove.id }))
 
-        let reloaded = ClipboardStore(directoryURL: directory)
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.items.map(\.text), ["keep"])
     }
 
     @MainActor
     func testStoreClearsOnlyUnpinnedItems() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         store.ingest(ClipboardSnapshot(text: "unpinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
         store.ingest(ClipboardSnapshot(text: "pinned", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
         let pinnedID = try! XCTUnwrap(store.items.first(where: { $0.text == "pinned" })).id
@@ -415,7 +497,7 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(store.clearUnpinned(), 1)
         XCTAssertEqual(store.items.map(\.text), ["pinned"])
 
-        let reloaded = ClipboardStore(directoryURL: directory)
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.items.map(\.text), ["pinned"])
         XCTAssertTrue(reloaded.items[0].isPinned)
     }
@@ -423,7 +505,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testStoreRetentionRemovesOldUnpinnedItemsButKeepsPinnedItems() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory, retention: .oneDay)
+        let store = ClipboardStore(directoryURL: directory, retention: .oneDay, cipher: testCipher)
         let oldDate = Date(timeIntervalSince1970: 1_000)
 
         store.ingest(
@@ -564,7 +646,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testStoreClearRemovesHistoryOnly() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         store.ingest(ClipboardSnapshot(text: "keep", richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
         store.clear()
         XCTAssertTrue(store.items.isEmpty)
@@ -573,11 +655,11 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testImagePayloadPersists() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         let imageData = Data([0, 1, 2, 3])
         store.ingest(ClipboardSnapshot(text: nil, richTextData: nil, imageData: imageData, imageType: "public.png", fileURLs: []))
 
-        let reloaded = ClipboardStore(directoryURL: directory)
+        let reloaded = ClipboardStore(directoryURL: directory, cipher: testCipher)
         XCTAssertEqual(reloaded.items.first?.imageData, imageData)
         XCTAssertEqual(reloaded.items.first?.imageType, "public.png")
     }
@@ -585,7 +667,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testGIFPayloadPersistsAndKeepsGIFPasteType() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         let gifData = Data("GIF89a".utf8)
 
         store.ingest(ClipboardSnapshot(
@@ -625,7 +707,7 @@ final class ClipboardTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data("file".utf8).write(to: source)
 
-        let store = ClipboardStore(directoryURL: directory.appendingPathComponent("history"))
+        let store = ClipboardStore(directoryURL: directory.appendingPathComponent("history"), cipher: testCipher)
         store.ingest(ClipboardSnapshot(text: nil, richTextData: nil, imageData: nil, imageType: nil, fileURLs: [source]))
 
         XCTAssertEqual(store.items.first?.files.count, 1)
@@ -635,7 +717,7 @@ final class ClipboardTests: XCTestCase {
     @MainActor
     func testEmptySnapshotIsIgnored() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = ClipboardStore(directoryURL: directory)
+        let store = ClipboardStore(directoryURL: directory, cipher: testCipher)
         store.ingest(ClipboardSnapshot(text: nil, richTextData: nil, imageData: nil, imageType: nil, fileURLs: []))
         XCTAssertTrue(store.items.isEmpty)
     }

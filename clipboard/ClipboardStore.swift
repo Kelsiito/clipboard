@@ -6,20 +6,25 @@ final class ClipboardStore: ObservableObject {
     static let maximumPinnedItems = 3
 
     @Published private(set) var items: [ClipboardItem] = []
+    @Published private(set) var persistenceErrorMessage: String?
 
     private let fileManager = FileManager.default
     private let historyURL: URL
+    private let cipher: LocalDataCipher
+    private var canPersist = true
     private(set) var limit: Int
     private(set) var retention: ClipboardRetention
 
     init(
         directoryURL: URL? = nil,
         limit: Int = 50,
-        retention: ClipboardRetention = .never
+        retention: ClipboardRetention = .never,
+        cipher: LocalDataCipher = .keychainBacked
     ) {
         let directory = directoryURL ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("clipboard", isDirectory: true)
         historyURL = directory.appendingPathComponent("history.json")
+        self.cipher = cipher
         self.limit = min(max(limit, 10), 200)
         self.retention = retention
         load()
@@ -137,15 +142,18 @@ final class ClipboardStore: ObservableObject {
     private func load() {
         guard fileManager.fileExists(atPath: historyURL.path) else { return }
         do {
-            let data = try Data(contentsOf: historyURL)
-            items = Array(try JSONDecoder.clipboardDecoder.decode([ClipboardItem].self, from: data).prefix(limit))
+            let storedData = try Data(contentsOf: historyURL)
+            let openedData = try cipher.open(storedData, purpose: "clipboard-history")
+            items = Array(try JSONDecoder.clipboardDecoder.decode([ClipboardItem].self, from: openedData.plaintext).prefix(limit))
             normalizePinnedItems()
             let removedCount = pruneExpired(now: Date(), persist: false)
             sortItems()
-            if removedCount > 0 { save() }
+            if removedCount > 0 || !openedData.wasEncrypted { save() }
             items.forEach { scheduleOCRIfNeeded(for: $0) }
         } catch {
             items = []
+            canPersist = false
+            persistenceErrorMessage = "Encrypted history could not be opened. Existing data was preserved."
         }
     }
 
@@ -193,14 +201,17 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func save() {
+        guard canPersist else { return }
         do {
             let directory = historyURL.deletingLastPathComponent()
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            let data = try JSONEncoder.clipboardEncoder.encode(items)
-            try data.write(to: historyURL, options: .atomic)
+            let plaintext = try JSONEncoder.clipboardEncoder.encode(items)
+            let encryptedData = try cipher.seal(plaintext, purpose: "clipboard-history")
+            try encryptedData.write(to: historyURL, options: .atomic)
             try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: historyURL.path)
         } catch {
-            // Clipboard capture stays functional in memory if disk persistence fails.
+            canPersist = false
+            persistenceErrorMessage = "Encrypted history could not be saved. Clipboard capture remains available in memory."
         }
     }
 }
@@ -208,14 +219,18 @@ final class ClipboardStore: ObservableObject {
 @MainActor
 final class SnippetStore: ObservableObject {
     @Published private(set) var snippets: [ClipboardSnippet] = []
+    @Published private(set) var persistenceErrorMessage: String?
 
     private let fileManager = FileManager.default
     private let snippetsURL: URL
+    private let cipher: LocalDataCipher
+    private var canPersist = true
 
-    init(directoryURL: URL? = nil) {
+    init(directoryURL: URL? = nil, cipher: LocalDataCipher = .keychainBacked) {
         let directory = directoryURL ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("clipboard", isDirectory: true)
         snippetsURL = directory.appendingPathComponent("snippets.json")
+        self.cipher = cipher
         load()
     }
 
@@ -294,12 +309,16 @@ final class SnippetStore: ObservableObject {
     private func load() {
         guard fileManager.fileExists(atPath: snippetsURL.path) else { return }
         do {
-            let data = try Data(contentsOf: snippetsURL)
-            snippets = try JSONDecoder.clipboardDecoder.decode([ClipboardSnippet].self, from: data)
+            let storedData = try Data(contentsOf: snippetsURL)
+            let openedData = try cipher.open(storedData, purpose: "clipboard-library")
+            snippets = try JSONDecoder.clipboardDecoder.decode([ClipboardSnippet].self, from: openedData.plaintext)
             snippets = snippets.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             sortSnippets()
+            if !openedData.wasEncrypted { save() }
         } catch {
             snippets = []
+            canPersist = false
+            persistenceErrorMessage = "Encrypted Library data could not be opened. Existing data was preserved."
         }
     }
 
@@ -308,6 +327,7 @@ final class SnippetStore: ObservableObject {
     }
 
     private func save() {
+        guard canPersist else { return }
         do {
             let directory = snippetsURL.deletingLastPathComponent()
             try fileManager.createDirectory(
@@ -315,11 +335,13 @@ final class SnippetStore: ObservableObject {
                 withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700]
             )
-            let data = try JSONEncoder.clipboardEncoder.encode(snippets)
-            try data.write(to: snippetsURL, options: .atomic)
+            let plaintext = try JSONEncoder.clipboardEncoder.encode(snippets)
+            let encryptedData = try cipher.seal(plaintext, purpose: "clipboard-library")
+            try encryptedData.write(to: snippetsURL, options: .atomic)
             try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: snippetsURL.path)
         } catch {
-            // Snippets remain functional in memory if disk persistence fails.
+            canPersist = false
+            persistenceErrorMessage = "Encrypted Library data could not be saved. Items remain available in memory."
         }
     }
 }

@@ -181,6 +181,7 @@ final class AppState: ObservableObject {
     @Published private(set) var isHistoryPaused = false
     @Published private(set) var isCapturingStack = false
     @Published private(set) var clipboardStack = ClipboardStack()
+    @Published private(set) var requireAuthenticationForPrivateViews = false
 
     @Published var appearance: ClipboardAppearance {
         didSet {
@@ -226,6 +227,10 @@ final class AppState: ObservableObject {
     let store: ClipboardStore
     let snippetStore: SnippetStore
 
+    var isDeviceAuthenticationAvailable: Bool {
+        authenticationService.isAvailable
+    }
+
     private let monitor = PasteboardMonitor()
     private let hotKeyManager = GlobalHotKeyManager(identifier: 1)
     private let gifHotKeyManager = GlobalHotKeyManager(identifier: 2)
@@ -236,6 +241,7 @@ final class AppState: ObservableObject {
     private let screenGIFRecorder = ScreenGIFRecorder()
     private let quickLookPreview = ClipboardQuickLookPreview()
     private let annotationEditorController = AnnotationEditorController()
+    private let authenticationService = DeviceAuthenticationService()
     private var settingsWindow: NSWindow?
     private var favoritesWindow: NSWindow?
     private var targetApplication: NSRunningApplication?
@@ -243,6 +249,7 @@ final class AppState: ObservableObject {
     private var accessibilityTimer: Timer?
     private var hasStarted = false
     private var isUpdatingLaunchAtLogin = false
+    private var isAuthenticatingPrivateView = false
     private var oldHotKey: HotKeyConfiguration
     private var oldGIFHotKey: HotKeyConfiguration
     private var oldStackStartHotKey: HotKeyConfiguration?
@@ -259,6 +266,7 @@ final class AppState: ObservableObject {
         static let appearance = "clipboard.appearance"
         static let material = "clipboard.material"
         static let launchAtLogin = "clipboard.launchAtLogin"
+        static let requireAuthenticationForPrivateViews = "clipboard.requireAuthenticationForPrivateViews"
     }
 
     private init() {
@@ -295,6 +303,9 @@ final class AppState: ObservableObject {
         appearance = savedAppearance
         material = savedMaterial
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        requireAuthenticationForPrivateViews = UserDefaults.standard.bool(
+            forKey: Keys.requireAuthenticationForPrivateViews
+        )
 
         hotKeyManager.onHotKey = { [weak self] in
             self?.showPanel()
@@ -365,9 +376,21 @@ final class AppState: ObservableObject {
     func showPanel() {
         quickLookPreview.close()
         let currentProcessIdentifier = NSRunningApplication.current.processIdentifier
-        targetApplication = panelController.targetApplication(
+        let resolvedTargetApplication = panelController.targetApplication(
             excluding: currentProcessIdentifier
         )
+
+        guard requireAuthenticationForPrivateViews else {
+            presentPanel(targetApplication: resolvedTargetApplication)
+            return
+        }
+        authenticatePrivateView(reason: "Open clipboard history") { [weak self] in
+            self?.presentPanel(targetApplication: resolvedTargetApplication)
+        }
+    }
+
+    private func presentPanel(targetApplication resolvedTargetApplication: NSRunningApplication?) {
+        targetApplication = resolvedTargetApplication
 
         if !AXIsProcessTrusted() {
             statusMessage = "Enable Accessibility to position the picker near the field and paste automatically."
@@ -491,9 +514,21 @@ final class AppState: ObservableObject {
 
     func showFavorites() {
         panelController.close()
-        targetApplication = panelController.targetApplication(
+        let resolvedTargetApplication = panelController.targetApplication(
             excluding: NSRunningApplication.current.processIdentifier
         )
+
+        guard requireAuthenticationForPrivateViews else {
+            presentFavorites(targetApplication: resolvedTargetApplication)
+            return
+        }
+        authenticatePrivateView(reason: "Open the clipboard Library") { [weak self] in
+            self?.presentFavorites(targetApplication: resolvedTargetApplication)
+        }
+    }
+
+    private func presentFavorites(targetApplication resolvedTargetApplication: NSRunningApplication?) {
+        targetApplication = resolvedTargetApplication
 
         if favoritesWindow == nil {
             let favoritesSize = NSSize(width: 520, height: 430)
@@ -536,6 +571,41 @@ final class AppState: ObservableObject {
         NSApp.activate(ignoringOtherApps: true)
         favoritesWindow?.orderFrontRegardless()
         favoritesWindow?.makeKey()
+    }
+
+    func setPrivateViewAuthenticationEnabled(_ enabled: Bool) {
+        guard enabled else {
+            requireAuthenticationForPrivateViews = false
+            UserDefaults.standard.set(false, forKey: Keys.requireAuthenticationForPrivateViews)
+            statusMessage = "History and Library authentication disabled."
+            return
+        }
+
+        guard authenticationService.isAvailable else {
+            statusMessage = "Touch ID or Mac authentication is unavailable."
+            return
+        }
+
+        authenticatePrivateView(reason: "Protect clipboard history and Library") { [weak self] in
+            guard let self else { return }
+            self.requireAuthenticationForPrivateViews = true
+            UserDefaults.standard.set(true, forKey: Keys.requireAuthenticationForPrivateViews)
+            self.statusMessage = "History and Library authentication enabled."
+        }
+    }
+
+    private func authenticatePrivateView(reason: String, onSuccess: @escaping () -> Void) {
+        guard !isAuthenticatingPrivateView else { return }
+        isAuthenticatingPrivateView = true
+        authenticationService.authenticate(reason: reason) { [weak self] success in
+            guard let self else { return }
+            self.isAuthenticatingPrivateView = false
+            if success {
+                onSuccess()
+            } else {
+                self.statusMessage = "Authentication was cancelled or failed."
+            }
+        }
     }
 
     func showSettings() {
